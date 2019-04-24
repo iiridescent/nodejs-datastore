@@ -4,7 +4,8 @@
 .nyc_output
 docs/
 out/
-build/
+build/src/v1/doc
+# build/
 system-test/secrets.js
 system-test/*key.json
 *.lock
