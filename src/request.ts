@@ -710,7 +710,7 @@ class DatastoreRequest {
       let entities: Any[] = [];
 
       if (resp.batch.entityResults) {
-        entities = entity.formatArray(resp.batch.entityResults);
+        entities = entity.formatArray(resp.batch.entityResults, options.resultFormat);
       }
 
       // Emit each result right away, then get the rest if necessary.
@@ -1283,6 +1283,7 @@ export interface RequestOptions {
 export interface RunQueryStreamOptions {
   gaxOptions?: CallOptions;
   consistency?: 'strong'|'eventual';
+  resultFormat?: boolean;  
 }
 export interface SaveCallback {
   (a?: Error|null, b?: Entity): void;

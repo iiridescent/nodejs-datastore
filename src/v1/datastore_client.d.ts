@@ -261,7 +261,7 @@ declare namespace DatastoreClient {
     KEY_ONLY = 'KEY_ONLY'
   }
 
-  interface EntityResult {
+  export interface EntityResult {
     entity: Entity;
     version: number;
     cursor: string|Buffer;

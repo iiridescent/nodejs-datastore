@@ -17,7 +17,7 @@
 import * as arrify from 'arrify';
 import {Key} from 'readline';
 import {Datastore} from '.';
-import {Entity} from './entity';
+import {Entity, EntityResult} from './entity';
 import {Transaction} from './transaction';
 
 export type Operator = '='|'<'|'>'|'<='|'>='|'HAS_ANCESTOR';
@@ -511,6 +511,7 @@ export {Query};
 
 export interface RunQueryOptions {
   consistency?: 'strong'|'eventual';
+  resultFormat?: boolean;
 }
 
 export interface RunQueryCallback {

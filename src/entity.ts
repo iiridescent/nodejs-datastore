@@ -631,11 +631,19 @@ export namespace entity {
    *   //
    * });
    */
-  export function formatArray(results: ResponseResult[]) {
+  export function formatArray(results: ResponseResult[], resultFormat = false) {
     return results.map(result => {
       const ent = entity.entityFromEntityProto(result.entity);
       ent[entity.KEY_SYMBOL] = entity.keyFromKeyProto(result.entity.key!);
-      return ent;
+      let response = ent;
+      if(resultFormat) {
+        response = {
+          entity: ent,
+          version: result.version,
+          cursor: result.cursor,
+        };
+      }
+      return response;
     });
   }
 
@@ -924,6 +932,12 @@ export interface EntityProto {
 // tslint:disable-next-line no-any
 export type Entity = any;
 
+export type EntityResult = {
+  entity: EntityProto;
+  version: number;
+  cursor: String;
+};
+
 export interface KeyProto {
   path: Array<{
     // tslint:disable-next-line no-any
@@ -934,6 +948,5 @@ export interface KeyProto {
   partitionId?: {namespaceId: {}};
 }
 
-export interface ResponseResult {
-  entity: EntityProto;
+export interface ResponseResult extends EntityResult {
 }
