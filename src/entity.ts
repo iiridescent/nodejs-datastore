@@ -935,7 +935,7 @@ export type Entity = any;
 export type EntityResult = {
   entity: EntityProto;
   version: number;
-  cursor: String;
+  cursor: string;
 };
 
 export interface KeyProto {

@@ -396,7 +396,7 @@ export declare type Entity = any;
 export declare type EntityResult = {
     entity: EntityProto;
     version: number;
-    cursor: String;
+    cursor: string;
 };
 export interface KeyProto {
     path: Array<{
