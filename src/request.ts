@@ -264,7 +264,7 @@ class DatastoreRequest {
               return;
             }
 
-            const entities = entity.formatArray(resp.found);
+            const entities = entity.formatArray(resp.found, options.resultFormat);
             const nextKeys = (resp.deferred || [])
                                  .map(entity.keyFromKeyProto)
                                  .map(entity.keyToKeyProto);
@@ -1239,6 +1239,7 @@ export interface AllocateIdsOptions {
 }
 export interface CreateReadStreamOptions {
   consistency?: string;
+  resultFormat?: boolean;
   gaxOptions?: CallOptions;
 }
 export interface GetCallback {

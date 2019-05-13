@@ -152,7 +152,7 @@ class DatastoreRequest {
                     stream.destroy(err);
                     return;
                 }
-                const entities = entity_1.entity.formatArray(resp.found);
+                const entities = entity_1.entity.formatArray(resp.found, options.resultFormat);
                 const nextKeys = (resp.deferred || [])
                     .map(entity_1.entity.keyFromKeyProto)
                     .map(entity_1.entity.keyToKeyProto);

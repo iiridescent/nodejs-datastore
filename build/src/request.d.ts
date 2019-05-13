@@ -734,6 +734,7 @@ export interface AllocateIdsOptions {
 }
 export interface CreateReadStreamOptions {
     consistency?: string;
+    resultFormat?: boolean;
     gaxOptions?: CallOptions;
 }
 export interface GetCallback {
