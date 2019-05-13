@@ -15,26 +15,15 @@
  */
 
 import * as pfy from '@google-cloud/promisify';
-import arrify = require('arrify');
+import * as arrify from 'arrify';
 import * as assert from 'assert';
 import * as proxyquire from 'proxyquire';
-import * as sinon from 'sinon';
-
-// import {google} from '../proto/datastore';
-import {Datastore, Query, TransactionOptions} from '../src';
-import {Entity} from '../src/entity';
-import {CommitResponse, DatastoreRequest} from '../src/request';
-import * as tsTypes from '../src/transaction';
-
-// tslint:disable-next-line no-any
-type Any = any;
-type Path = string|[string]|[string, number];
 
 const {entity} = require('../src/entity');
 
 let promisified = false;
 const fakePfy = Object.assign({}, pfy, {
-  promisifyAll(klass: Function, options: pfy.PromisifyAllOptions) {
+  promisifyAll(klass, options) {
     if (klass.name !== 'Transaction') {
       return;
     }
@@ -43,32 +32,32 @@ const fakePfy = Object.assign({}, pfy, {
   },
 });
 
-// tslint:disable-next-line variable-name
-const DatastoreRequestOverride = {
+// tslint:disable-next-line no-any variable-name
+const DatastoreRequestOverride: any = {
   delete () {},
   save() {},
-} as {} as DatastoreRequest;
+};
 
 class FakeDatastoreRequest {
   delete() {
     const args = [].slice.apply(arguments);
-    const results = DatastoreRequestOverride.delete.apply(null, args as Any);
-    DatastoreRequestOverride.delete = (() => {}) as Any;
+    const results = DatastoreRequestOverride.delete.apply(null, args);
+    DatastoreRequestOverride.delete = () => {};
     return results;
   }
 
   save() {
     const args = [].slice.apply(arguments);
-    const results = DatastoreRequestOverride.save.apply(null, args as Any);
-    DatastoreRequestOverride.save = (() => {}) as Any;
+    const results = DatastoreRequestOverride.save.apply(null, args);
+    DatastoreRequestOverride.save = () => {};
     return results;
   }
 }
 
 describe('Transaction', () => {
   // tslint:disable-next-line variable-name
-  let Transaction: typeof tsTypes.Transaction;
-  let transaction: tsTypes.Transaction;
+  let Transaction;
+  let transaction;
   const TRANSACTION_ID = 'transaction-id';
   const PROJECT_ID = 'project-id';
   const NAMESPACE = 'a-namespace';
@@ -77,9 +66,9 @@ describe('Transaction', () => {
     request_() {},
     projectId: PROJECT_ID,
     namespace: NAMESPACE,
-  } as {} as Datastore;
+  };
 
-  function key(path: Path) {
+  function key(path) {
     return new entity.Key({path: arrify(path)});
   }
 
@@ -130,9 +119,10 @@ describe('Transaction', () => {
     });
 
     it('should localize request function', done => {
-      const fakeDataset: Any = {
+      // tslint:disable-next-line no-any
+      const fakeDataset: any = {
         request_: {
-          bind(context: {}) {
+          bind(context) {
             assert.strictEqual(context, fakeDataset);
 
             setImmediate(() => {
@@ -161,7 +151,7 @@ describe('Transaction', () => {
     });
 
     it('should commit', done => {
-      transaction.request_ = (config) => {
+      transaction.request_ = config => {
         assert.strictEqual(config.client, 'DatastoreClient');
         assert.strictEqual(config.method, 'commit');
         assert.strictEqual(config.gaxOptions, undefined);
@@ -173,7 +163,7 @@ describe('Transaction', () => {
     it('should accept gaxOptions', done => {
       const gaxOptions = {};
 
-      transaction.request_ = (config) => {
+      transaction.request_ = config => {
         assert.deepEqual(config.gaxOpts, {});
         done();
       };
@@ -198,9 +188,9 @@ describe('Transaction', () => {
       const rollbackApiResponse = {};
 
       beforeEach(() => {
-        transaction.rollback = ((callback: Function) => {
-                                 callback(rollbackError, rollbackApiResponse);
-                               }) as Any;
+        transaction.rollback = (callback) => {
+          callback(rollbackError, rollbackApiResponse);
+        };
 
         transaction.request_ = (config, callback) => {
           callback(error, apiResponse);
@@ -244,16 +234,16 @@ describe('Transaction', () => {
       const args: Array<{}> = [];
 
       let deleteCalled = 0;
-      DatastoreRequestOverride.delete = ((a: {}) => {
-                                          args.push(a);
-                                          deleteCalled++;
-                                        }) as Any;
+      DatastoreRequestOverride.delete = (a) => {
+        args.push(a);
+        deleteCalled++;
+      };
 
       let saveCalled = 0;
-      DatastoreRequestOverride.save = ((a: {}) => {
-                                        args.push(a);
-                                        saveCalled++;
-                                      }) as Any;
+      DatastoreRequestOverride.save = (a) => {
+        args.push(a);
+        saveCalled++;
+      };
 
       transaction.request_ = () => {};
 
@@ -277,14 +267,14 @@ describe('Transaction', () => {
       transaction.save({key: key(['Product', 123]), data: ''});
 
       let deleteCalled = 0;
-      DatastoreRequestOverride.delete = (() => {
-                                          deleteCalled++;
-                                        }) as Any;
+      DatastoreRequestOverride.delete = () => {
+        deleteCalled++;
+      };
 
       let saveCalled = 0;
-      DatastoreRequestOverride.save = (() => {
-                                        saveCalled++;
-                                      }) as Any;
+      DatastoreRequestOverride.save = () => {
+        saveCalled++;
+      };
 
       transaction.request_ = () => {};
 
@@ -297,10 +287,10 @@ describe('Transaction', () => {
       transaction.save({key: key(['Product']), data: ''});
       transaction.save({key: key(['Product']), data: ''});
 
-      DatastoreRequestOverride.save = ((entities: Entity[]) => {
-                                        assert.strictEqual(entities.length, 2);
-                                        done();
-                                      }) as Any;
+      DatastoreRequestOverride.save = (entities) => {
+        assert.strictEqual(entities.length, 2);
+        done();
+      };
 
       transaction.request_ = () => {};
 
@@ -317,7 +307,7 @@ describe('Transaction', () => {
         },
       ];
 
-      transaction.request_ = (config) => {
+      transaction.request_ = config => {
         assert.deepStrictEqual(config.reqOpts, {
           mutations: [{a: 'b'}, {c: 'd'}, {e: 'f'}, {g: 'h'}],
         });
@@ -353,19 +343,17 @@ describe('Transaction', () => {
 
   describe('createQuery', () => {
     it('should return query from datastore.createQuery', () => {
-      const args =
-          ['0', '1'];  // Query only accepts to accept string||null values
+      const args = [0, 1];
       const createQueryReturnValue = {};
 
-      transaction.datastore.createQuery = function(...ags: Any) {
+      transaction.datastore.createQuery = function(...ags) {
         assert.strictEqual(this, transaction);
         assert.strictEqual(ags[0], args[0]);
         assert.strictEqual(ags[1], args[1]);
-        return createQueryReturnValue as Query;
+        return createQueryReturnValue;
       };
 
-      const query =
-          transaction.createQuery(args[0], args[1]);  // verbose de-structure
+      const query = transaction.createQuery(...args);
       assert.strictEqual(query, createQueryReturnValue);
     });
   });
@@ -382,7 +370,7 @@ describe('Transaction', () => {
 
       assert.strictEqual(transaction.modifiedEntities_.length, keys.length);
 
-      transaction.modifiedEntities_.forEach((queuedEntity: Entity) => {
+      transaction.modifiedEntities_.forEach((queuedEntity) => {
         assert.strictEqual(queuedEntity.method, 'delete');
         assert(keys.indexOf(queuedEntity.entity.key) > -1);
         assert.deepStrictEqual(queuedEntity.args, [queuedEntity.entity.key]);
@@ -396,7 +384,7 @@ describe('Transaction', () => {
     });
 
     it('should rollback', done => {
-      transaction.request_ = (config) => {
+      transaction.request_ = config => {
         assert.strictEqual(config.client, 'DatastoreClient');
         assert.strictEqual(config.method, 'rollback');
         assert.strictEqual(config.gaxOptions, undefined);
@@ -462,7 +450,7 @@ describe('Transaction', () => {
 
   describe('run', () => {
     it('should make the correct API request', done => {
-      transaction.request_ = (config) => {
+      transaction.request_ = config => {
         assert.strictEqual(config.client, 'DatastoreClient');
         assert.strictEqual(config.method, 'beginTransaction');
         assert.deepStrictEqual(config.reqOpts, {transactionOptions: {}});
@@ -476,7 +464,7 @@ describe('Transaction', () => {
     it('should allow setting gaxOptions', done => {
       const gaxOptions = {};
 
-      transaction.request_ = (config) => {
+      transaction.request_ = config => {
         assert.strictEqual(config.gaxOpts, gaxOptions);
         done();
       };
@@ -490,7 +478,7 @@ describe('Transaction', () => {
           readOnly: true,
         };
 
-        transaction.request_ = (config: Any) => {
+        transaction.request_ = config => {
           assert.deepStrictEqual(
               config.reqOpts.transactionOptions.readOnly, {});
           done();
@@ -502,9 +490,9 @@ describe('Transaction', () => {
       it('should respect the global readOnly option', done => {
         transaction.readOnly = true;
 
-        transaction.request_ = (config) => {
+        transaction.request_ = config => {
           assert.deepStrictEqual(
-              config.reqOpts!.transactionOptions!.readOnly, {});
+              config.reqOpts.transactionOptions.readOnly, {});
           done();
         };
 
@@ -518,11 +506,10 @@ describe('Transaction', () => {
           transactionId: 'transaction-id',
         };
 
-        transaction.request_ = (config) => {
-          assert.deepStrictEqual(
-              config.reqOpts!.transactionOptions!.readWrite, {
-                previousTransaction: options.transactionId,
-              });
+        transaction.request_ = config => {
+          assert.deepStrictEqual(config.reqOpts.transactionOptions.readWrite, {
+            previousTransaction: options.transactionId,
+          });
           done();
         };
 
@@ -532,11 +519,10 @@ describe('Transaction', () => {
       it('should respect the global transactionId option', done => {
         transaction.id = 'transaction-id';
 
-        transaction.request_ = (config) => {
-          assert.deepStrictEqual(
-              config.reqOpts!.transactionOptions!.readWrite, {
-                previousTransaction: transaction.id,
-              });
+        transaction.request_ = config => {
+          assert.deepStrictEqual(config.reqOpts.transactionOptions.readWrite, {
+            previousTransaction: transaction.id,
+          });
           done();
         };
 
@@ -554,9 +540,9 @@ describe('Transaction', () => {
               previousTransaction: 'transaction-id',
             },
           },
-        } as {} as TransactionOptions;
+        };
 
-        transaction.request_ = (config) => {
+        transaction.request_ = config => {
           assert.deepStrictEqual(config.reqOpts, options);
           done();
         };
@@ -598,7 +584,7 @@ describe('Transaction', () => {
 
       it('should set transaction id', done => {
         delete transaction.id;
-        transaction.run((err: Error|null) => {
+        transaction.run((err) => {
           assert.ifError(err);
           assert.strictEqual(transaction.id, TRANSACTION_ID);
           done();
@@ -625,7 +611,7 @@ describe('Transaction', () => {
       ];
       transaction.save(entities);
       assert.strictEqual(transaction.modifiedEntities_.length, entities.length);
-      transaction.modifiedEntities_.forEach((queuedEntity: Entity) => {
+      transaction.modifiedEntities_.forEach((queuedEntity) => {
         assert.strictEqual(queuedEntity.method, 'save');
         const match = entities.filter((ent) => {
           return ent.key === queuedEntity.entity.key;

@@ -120,8 +120,7 @@ describe('Request', () => {
 
     it('should format an entity', () => {
       const key = {};
-      // tslint:disable-next-line:no-any
-      const entityObject: any = {data: true};
+      const entityObject = {data: true};
       entityObject[entity.KEY_SYMBOL] = key;
       const preparedEntityObject =
           Request.prepareEntityObject_(entityObject) as Any;

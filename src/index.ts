@@ -24,7 +24,7 @@
  * @namespace google.protobuf
  */
 
-import arrify = require('arrify');
+import * as arrify from 'arrify';
 import {GoogleAuth, GoogleAuthOptions} from 'google-auth-library';
 import {GrpcClient} from 'google-gax';
 import {ChannelCredentials} from 'grpc';
@@ -615,10 +615,6 @@ class Datastore extends DatastoreRequest {
   static NO_MORE_RESULTS = 'NO_MORE_RESULTS';
   NO_MORE_RESULTS = Datastore.NO_MORE_RESULTS;
 
-  createQuery(kind?: string): Query;
-  createQuery(kind?: string[]): Query;
-  createQuery(namespace: string, kind: string): Query;
-  createQuery(namespace: string, kind: string[]): Query;
   /**
    * Create a query for the specified kind. See {@link Query} for all
    * of the available methods.
@@ -635,6 +631,10 @@ class Datastore extends DatastoreRequest {
    * const datastore = new Datastore();
    * const query = datastore.createQuery('Company');
    */
+  createQuery(kind?: string): Query;
+  createQuery(kind?: string[]): Query;
+  createQuery(namespace: string, kind: string): Query;
+  createQuery(namespace: string, kind: string[]): Query;
   createQuery(namespaceOrKind?: string|string[], kind?: string|string[]):
       Query {
     let namespace = namespaceOrKind as string;
@@ -642,12 +642,9 @@ class Datastore extends DatastoreRequest {
       kind = namespaceOrKind;
       namespace = this.namespace!;
     }
-    return new Query(this, namespace, arrify(kind) as string[]);
+    return new Query(this, namespace, arrify(kind));
   }
 
-  key(options: entity.KeyOptions): entity.Key;
-  key(path: PathType[]): entity.Key;
-  key(path: string): entity.Key;
   /**
    * Helper to create a Key object, scoped to the instance's namespace by
    * default.
@@ -697,10 +694,13 @@ class Datastore extends DatastoreRequest {
    *   path: ['Company', 123]
    * });
    */
+  key(options: entity.KeyOptions): entity.Key;
+  key(path: PathType[]): entity.Key;
+  key(path: string): entity.Key;
   key(options: string|entity.KeyOptions|PathType[]): entity.Key {
     options = is.object(options) ? options : {
       namespace: this.namespace,
-      path: arrify(options) as PathType[],
+      path: arrify(options),
     };
     return new entity.Key(options as entity.KeyOptions);
   }

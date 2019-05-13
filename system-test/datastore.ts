@@ -20,9 +20,7 @@ const assertRejects = require('assert-rejects');
 
 describe('Datastore', () => {
   const testKinds: string[] = [];
-  const datastore = new Datastore({
-    namespace: `${Date.now()}`,
-  });
+  const datastore = new Datastore();
   // Override the Key method so we can track what keys are created during the
   // tests. They are then deleted in the `after` hook.
   const key = datastore.key;
@@ -123,9 +121,8 @@ describe('Datastore', () => {
         ],
       });
       const [entity] = await datastore.get(postKey);
-      assert.deepStrictEqual(entity[datastore.KEY], postKey);
-      delete entity[datastore.KEY];
       assert.deepStrictEqual(entity, data);
+      assert.deepStrictEqual(entity[datastore.KEY], postKey);
       await datastore.delete(postKey);
     });
 
@@ -133,9 +130,8 @@ describe('Datastore', () => {
       const postKey = datastore.key(['Post', 'post1']);
       await datastore.save({key: postKey, data: post});
       const [entity] = await datastore.get(postKey);
-      assert.deepStrictEqual(entity[datastore.KEY], postKey);
-      delete entity[datastore.KEY];
       assert.deepStrictEqual(entity, post);
+      assert.deepStrictEqual(entity[datastore.KEY], postKey);
       await datastore.delete(postKey);
     });
 
@@ -143,7 +139,6 @@ describe('Datastore', () => {
       const postKey = datastore.key(['Post', 123456789]);
       await datastore.save({key: postKey, data: post});
       const [entity] = await datastore.get(postKey);
-      delete entity[datastore.KEY];
       assert.deepStrictEqual(entity, post);
       await datastore.delete(postKey);
     });
@@ -157,7 +152,6 @@ describe('Datastore', () => {
       const assignedId = postKey.id;
       assert(assignedId);
       const [entity] = await datastore.get(postKey);
-      delete entity[datastore.KEY];
       assert.deepStrictEqual(entity, data);
       await datastore.delete(datastore.key(['Post', assignedId]));
     });
@@ -170,7 +164,6 @@ describe('Datastore', () => {
       assert(postKey.id);
 
       const [entity] = await datastore.get(postKey);
-      delete entity[datastore.KEY];
       assert.deepStrictEqual(entity, post);
       await datastore.delete(postKey);
     });
@@ -214,7 +207,6 @@ describe('Datastore', () => {
         data: post,
       }));
       const [entity] = await datastore.get(postKey);
-      delete entity[datastore.KEY];
       assert.deepStrictEqual(entity, post);
       await datastore.delete(postKey);
     });
@@ -512,12 +504,10 @@ describe('Datastore', () => {
           ]);
 
       const [entities] = await datastore.runQuery(q);
-      delete entities[0][datastore.KEY];
       assert.deepStrictEqual(entities![0], {
         name: 'Arya',
         family: 'Stark',
       });
-      delete entities[8][datastore.KEY];
       assert.deepStrictEqual(entities![8], {
         name: 'Sansa',
         family: 'Stark',
@@ -587,7 +577,6 @@ describe('Datastore', () => {
       transaction.save({key, data: obj});
       await transaction.commit();
       const [entity] = await datastore.get(key);
-      delete entity[datastore.KEY];
       assert.deepStrictEqual(entity, obj);
     });
 
