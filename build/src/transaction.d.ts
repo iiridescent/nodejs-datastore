@@ -18,7 +18,7 @@ import { google } from '../proto/datastore';
 import { Datastore, TransactionOptions } from '.';
 import { Entity } from './entity';
 import { Query } from './query';
-import { DatastoreRequest } from './request';
+import { DatastoreRequest, CommitResponse } from './request';
 declare type RollbackCallback = google.datastore.v1.Datastore.RollbackCallback;
 declare type RollbackResponse = google.datastore.v1.RollbackResponse;
 /**
@@ -89,9 +89,7 @@ declare class Transaction extends DatastoreRequest {
      *   const apiResponse = data[0];
      * });
      */
-    commit(gaxOptions?: CallOptions): Promise<google.datastore.v1.CommitResponse>;
-    commit(callback: google.datastore.v1.Datastore.CommitCallback): void;
-    commit(gaxOptions: CallOptions, callback: google.datastore.v1.Datastore.CommitCallback): void;
+    commit(gaxOptionsOrCallback?: CallOptions | CommitCallback, cb?: CommitCallback): void | Promise<CommitResponse>;
     /**
      * Create a query for the specified kind. See {module:datastore/query} for all
      * of the available methods.
@@ -131,39 +129,8 @@ declare class Transaction extends DatastoreRequest {
      * });
      */
     createQuery(namespace: string, kind?: string | string[]): Query;
-    /**
-     * Delete all entities identified with the specified key(s) in the current
-     * transaction.
-     *
-     * @param {Key|Key[]} key Datastore key object(s).
-     *
-     * @example
-     * const {Datastore} = require('@google-cloud/datastore');
-     * const datastore = new Datastore();
-     * const transaction = datastore.transaction();
-     *
-     * transaction.run((err) => {
-     *   if (err) {
-     *     // Error handling omitted.
-     *   }
-     *
-     *   // Delete a single entity.
-     *   transaction.delete(datastore.key(['Company', 123]));
-     *
-     *   // Delete multiple entities at once.
-     *   transaction.delete([
-     *     datastore.key(['Company', 123]),
-     *     datastore.key(['Product', 'Computer'])
-     *   ]);
-     *
-     *   transaction.commit((err) => {
-     *     if (!err) {
-     *       // Transaction committed successfully.
-     *     }
-     *   });
-     * });
-     */
-    delete(entities: Entity): void;
+    delete(): Promise<CommitResponse>;
+    delete(entities: Entities): void;
     /**
      * Reverse a transaction remotely and finalize the current transaction
      * instance.
@@ -198,9 +165,7 @@ declare class Transaction extends DatastoreRequest {
      *   const apiResponse = data[0];
      * });
      */
-    rollback(gaxOptions?: CallOptions): Promise<RollbackResponse>;
-    rollback(callback: RollbackCallback): void;
-    rollback(gaxOptions: CallOptions, callback: RollbackCallback): void;
+    rollback(gaxOptionsOrCallback?: CallOptions | RollbackCallback, cb?: Function): void | Promise<RollbackResponse>;
     /**
      * Begin a remote transaction. In the callback provided, run your
      * transactional commands.
@@ -251,9 +216,7 @@ declare class Transaction extends DatastoreRequest {
      *   const apiResponse = data[1];
      * });
      */
-    run(options?: RunOptions): Promise<google.datastore.v1.BeginTransactionResponse>;
-    run(callback?: RunCallback): void;
-    run(options?: RunOptions, callback?: RunCallback): void;
+    run(optionsOrCallback?: RunOptions | RunCallback | Entity, cb?: RunCallback): void | Promise<BeginTransactionResponse>;
     /**
      * Insert or update the specified object(s) in the current transaction. If a
      * key is incomplete, its associated object is inserted and the original Key
@@ -393,8 +356,10 @@ export declare type ModifiedEntities = Array<{
     method: string;
     args: Entity[];
 }>;
-export interface RunCallback extends google.datastore.v1.Datastore.BeginTransactionCallback {
-    (transaction: Transaction | null): void;
+export declare type CommitCallback = google.datastore.v1.Datastore.CommitCallback;
+export declare type BeginTransactionResponse = [google.datastore.v1.BeginTransactionResponse];
+export interface RunCallback {
+    (error: Error | null, transaction: Transaction | null, response?: google.datastore.v1.BeginTransactionResponse): void;
 }
 export interface RunOptions {
     readOnly?: boolean;

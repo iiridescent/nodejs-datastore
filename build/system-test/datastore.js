@@ -14,21 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const assert = require("assert");
 const src_1 = require("../src");
 const assertRejects = require('assert-rejects');
 describe('Datastore', () => {
     const testKinds = [];
-    const datastore = new src_1.Datastore();
+    const datastore = new src_1.Datastore({
+        namespace: `${Date.now()}`,
+    });
     // Override the Key method so we can track what keys are created during the
     // tests. They are then deleted in the `after` hook.
     const key = datastore.key;
@@ -38,23 +32,21 @@ describe('Datastore', () => {
         testKinds.push(keyObject.kind);
         return keyObject;
     };
-    after(() => __awaiter(this, void 0, void 0, function* () {
-        function deleteEntities(kind) {
-            return __awaiter(this, void 0, void 0, function* () {
-                const query = datastore.createQuery(kind).select('__key__');
-                const [entities] = yield datastore.runQuery(query);
-                const keys = entities.map(entity => {
-                    return entity[datastore.KEY];
-                });
-                yield datastore.delete(keys);
+    after(async () => {
+        async function deleteEntities(kind) {
+            const query = datastore.createQuery(kind).select('__key__');
+            const [entities] = await datastore.runQuery(query);
+            const keys = entities.map(entity => {
+                return entity[datastore.KEY];
             });
+            await datastore.delete(keys);
         }
-        yield Promise.all(testKinds.map(kind => deleteEntities(kind)));
-    }));
-    it('should allocate IDs', () => __awaiter(this, void 0, void 0, function* () {
-        const keys = yield datastore.allocateIds(datastore.key('Kind'), 10);
+        await Promise.all(testKinds.map(kind => deleteEntities(kind)));
+    });
+    it('should allocate IDs', async () => {
+        const keys = await datastore.allocateIds(datastore.key('Kind'), 10);
         assert.ok(keys);
-    }));
+    });
     describe('create, retrieve and delete', () => {
         const post = {
             title: 'How to make the perfect pizza in your grill',
@@ -69,7 +61,7 @@ describe('Datastore', () => {
                 views: 100,
             },
         };
-        it('should excludeFromIndexes correctly', () => __awaiter(this, void 0, void 0, function* () {
+        it('should excludeFromIndexes correctly', async () => {
             const longString = Buffer.alloc(1501, '.').toString();
             const postKey = datastore.key(['Post', 'post1']);
             const data = {
@@ -111,7 +103,7 @@ describe('Datastore', () => {
                     ],
                 },
             };
-            yield datastore.save({
+            await datastore.save({
                 key: postKey,
                 data,
                 excludeFromIndexes: [
@@ -125,95 +117,101 @@ describe('Datastore', () => {
                     'metadata.longStringArray[].nestedLongStringArray[].longString',
                 ],
             });
-            const [entity] = yield datastore.get(postKey);
+            const [entity] = await datastore.get(postKey);
+            assert.deepStrictEqual(entity[datastore.KEY], postKey);
+            delete entity[datastore.KEY];
             assert.deepStrictEqual(entity, data);
-            assert.deepStrictEqual(entity[datastore.KEY], postKey);
-            yield datastore.delete(postKey);
-        }));
-        it('should save/get/delete with a key name', () => __awaiter(this, void 0, void 0, function* () {
+            await datastore.delete(postKey);
+        });
+        it('should save/get/delete with a key name', async () => {
             const postKey = datastore.key(['Post', 'post1']);
-            yield datastore.save({ key: postKey, data: post });
-            const [entity] = yield datastore.get(postKey);
-            assert.deepStrictEqual(entity, post);
+            await datastore.save({ key: postKey, data: post });
+            const [entity] = await datastore.get(postKey);
             assert.deepStrictEqual(entity[datastore.KEY], postKey);
-            yield datastore.delete(postKey);
-        }));
-        it('should save/get/delete with a numeric key id', () => __awaiter(this, void 0, void 0, function* () {
-            const postKey = datastore.key(['Post', 123456789]);
-            yield datastore.save({ key: postKey, data: post });
-            const [entity] = yield datastore.get(postKey);
+            delete entity[datastore.KEY];
             assert.deepStrictEqual(entity, post);
-            yield datastore.delete(postKey);
-        }));
-        it('should save/get/delete a buffer', () => __awaiter(this, void 0, void 0, function* () {
+            await datastore.delete(postKey);
+        });
+        it('should save/get/delete with a numeric key id', async () => {
+            const postKey = datastore.key(['Post', 123456789]);
+            await datastore.save({ key: postKey, data: post });
+            const [entity] = await datastore.get(postKey);
+            delete entity[datastore.KEY];
+            assert.deepStrictEqual(entity, post);
+            await datastore.delete(postKey);
+        });
+        it('should save/get/delete a buffer', async () => {
             const postKey = datastore.key(['Post']);
             const data = {
                 buf: Buffer.from('010100000000000000000059400000000000006940', 'hex'),
             };
-            yield datastore.save({ key: postKey, data });
+            await datastore.save({ key: postKey, data });
             const assignedId = postKey.id;
             assert(assignedId);
-            const [entity] = yield datastore.get(postKey);
+            const [entity] = await datastore.get(postKey);
+            delete entity[datastore.KEY];
             assert.deepStrictEqual(entity, data);
-            yield datastore.delete(datastore.key(['Post', assignedId]));
-        }));
-        it('should save/get/delete with a generated key id', () => __awaiter(this, void 0, void 0, function* () {
+            await datastore.delete(datastore.key(['Post', assignedId]));
+        });
+        it('should save/get/delete with a generated key id', async () => {
             const postKey = datastore.key('Post');
-            yield datastore.save({ key: postKey, data: post });
+            await datastore.save({ key: postKey, data: post });
             // The key's path should now be complete.
             assert(postKey.id);
-            const [entity] = yield datastore.get(postKey);
+            const [entity] = await datastore.get(postKey);
+            delete entity[datastore.KEY];
             assert.deepStrictEqual(entity, post);
-            yield datastore.delete(postKey);
-        }));
-        it('should save/get/update', () => __awaiter(this, void 0, void 0, function* () {
+            await datastore.delete(postKey);
+        });
+        it('should save/get/update', async () => {
             const postKey = datastore.key('Post');
-            yield datastore.save({ key: postKey, data: post });
-            const [entity] = yield datastore.get(postKey);
+            await datastore.save({ key: postKey, data: post });
+            const [entity] = await datastore.get(postKey);
             assert.strictEqual(entity.title, post.title);
             entity.title = 'Updated';
-            yield datastore.save(entity);
-            const [entity2] = yield datastore.get(postKey);
+            await datastore.save(entity);
+            const [entity2] = await datastore.get(postKey);
             assert.strictEqual(entity2.title, 'Updated');
-            yield datastore.delete(postKey);
-        }));
-        it('should save and get with a string ID', () => __awaiter(this, void 0, void 0, function* () {
+            await datastore.delete(postKey);
+        });
+        it('should save and get with a string ID', async () => {
             const longIdKey = datastore.key([
                 'Post',
                 datastore.int('100000000000001234'),
             ]);
-            yield datastore.save({
+            await datastore.save({
                 key: longIdKey,
                 data: {
                     test: true,
                 },
             });
-            const [entity] = yield datastore.get(longIdKey);
+            const [entity] = await datastore.get(longIdKey);
             assert.strictEqual(entity.test, true);
-        }));
-        it('should fail explicitly set second insert on save', () => __awaiter(this, void 0, void 0, function* () {
+        });
+        it('should fail explicitly set second insert on save', async () => {
             const postKey = datastore.key('Post');
-            yield datastore.save({ key: postKey, data: post });
+            await datastore.save({ key: postKey, data: post });
             // The key's path should now be complete.
             assert(postKey.id);
-            yield assertRejects(datastore.save({
+            await assertRejects(datastore.save({
                 key: postKey,
                 method: 'insert',
                 data: post,
             }));
-            const [entity] = yield datastore.get(postKey);
+            const [entity] = await datastore.get(postKey);
+            delete entity[datastore.KEY];
             assert.deepStrictEqual(entity, post);
-            yield datastore.delete(postKey);
-        }));
-        it('should fail explicitly set first update on save', () => __awaiter(this, void 0, void 0, function* () {
+            await datastore.delete(postKey);
+        });
+        it('should fail explicitly set first update on save', async () => {
             const postKey = datastore.key('Post');
-            yield assertRejects(datastore.save({
+            await assertRejects(datastore.save({
                 key: postKey,
                 method: 'update',
                 data: post,
             }));
-        }));
-        it('should save/get/delete multiple entities at once', () => __awaiter(this, void 0, void 0, function* () {
+        });
+        it('should save/get/delete multiple entities at once', async () => {
             const post2 = {
                 title: 'How to make the perfect homemade pasta',
                 tags: ['pasta', 'homemade'],
@@ -225,18 +223,19 @@ describe('Datastore', () => {
             };
             const key1 = datastore.key('Post');
             const key2 = datastore.key('Post');
-            yield datastore.save([{ key: key1, data: post }, { key: key2, data: post2 }]);
-            const [entities] = yield datastore.get([key1, key2]);
+            await datastore.save([{ key: key1, data: post }, { key: key2, data: post2 }]);
+            const [entities] = await datastore.get([key1, key2]);
             assert.strictEqual(entities.length, 2);
-            yield datastore.delete([key1, key2]);
-        }));
+            await datastore.delete([key1, key2]);
+        });
         it('should get multiple entities in a stream', done => {
             const key1 = datastore.key('Post');
             const key2 = datastore.key('Post');
             datastore.save([{ key: key1, data: post }, { key: key2, data: post }], err => {
                 assert.ifError(err);
                 let numEntitiesEmitted = 0;
-                datastore.createReadStream([key1, key2])
+                datastore
+                    .createReadStream([key1, key2])
                     .on('error', done)
                     .on('data', () => {
                     numEntitiesEmitted++;
@@ -247,66 +246,67 @@ describe('Datastore', () => {
                 });
             });
         });
-        it('should save keys as a part of entity and query by key', () => __awaiter(this, void 0, void 0, function* () {
+        it('should save keys as a part of entity and query by key', async () => {
             const personKey = datastore.key(['People', 'US', 'Person', 'name']);
-            yield datastore.save({
+            await datastore.save({
                 key: personKey,
                 data: {
                     fullName: 'Full name',
                     linkedTo: personKey,
                 },
             });
-            const query = datastore.createQuery('Person')
+            const query = datastore
+                .createQuery('Person')
                 .hasAncestor(datastore.key(['People', 'US']))
                 .filter('linkedTo', personKey);
-            const [results] = yield datastore.runQuery(query);
+            const [results] = await datastore.runQuery(query);
             assert.strictEqual(results[0].fullName, 'Full name');
             assert.deepStrictEqual(results[0].linkedTo, personKey);
-            yield datastore.delete(personKey);
-        }));
+            await datastore.delete(personKey);
+        });
         describe('entity types', () => {
-            it('should save and decode an int', () => __awaiter(this, void 0, void 0, function* () {
+            it('should save and decode an int', async () => {
                 const integerValue = 2015;
                 const integerType = src_1.Datastore.int(integerValue);
                 const key = datastore.key('Person');
-                yield datastore.save({
+                await datastore.save({
                     key,
                     data: {
                         year: integerType,
                     },
                 });
-                const [entity] = yield datastore.get(key);
+                const [entity] = await datastore.get(key);
                 assert.strictEqual(entity.year, integerValue);
-            }));
-            it('should save and decode a double', () => __awaiter(this, void 0, void 0, function* () {
+            });
+            it('should save and decode a double', async () => {
                 const doubleValue = 99.99;
                 const doubleType = src_1.Datastore.double(doubleValue);
                 const key = datastore.key('Person');
-                yield datastore.save({
+                await datastore.save({
                     key,
                     data: {
                         nines: doubleType,
                     },
                 });
-                const [entity] = yield datastore.get(key);
+                const [entity] = await datastore.get(key);
                 assert.strictEqual(entity.nines, doubleValue);
-            }));
-            it('should save and decode a geo point', () => __awaiter(this, void 0, void 0, function* () {
+            });
+            it('should save and decode a geo point', async () => {
                 const geoPointValue = {
                     latitude: 40.6894,
                     longitude: -74.0447,
                 };
                 const geoPointType = src_1.Datastore.geoPoint(geoPointValue);
                 const key = datastore.key('Person');
-                yield datastore.save({
+                await datastore.save({
                     key,
                     data: {
                         location: geoPointType,
                     },
                 });
-                const [entity] = yield datastore.get(key);
+                const [entity] = await datastore.get(key);
                 assert.deepStrictEqual(entity.location, geoPointValue);
-            }));
+            });
         });
     });
     describe('querying the datastore', () => {
@@ -374,38 +374,46 @@ describe('Datastore', () => {
                 alive: true,
             },
         ];
-        before(() => __awaiter(this, void 0, void 0, function* () {
+        before(async () => {
             const keysToSave = keys.map((key, index) => {
                 return {
                     key,
                     data: characters[index],
                 };
             });
-            yield datastore.save(keysToSave);
-        }));
-        after(() => __awaiter(this, void 0, void 0, function* () {
-            yield datastore.delete(keys);
-        }));
-        it('should limit queries', () => __awaiter(this, void 0, void 0, function* () {
-            const q = datastore.createQuery('Character').hasAncestor(ancestor).limit(5);
-            const [firstEntities, info] = yield datastore.runQuery(q);
+            await datastore.save(keysToSave);
+        });
+        after(async () => {
+            await datastore.delete(keys);
+        });
+        it('should limit queries', async () => {
+            const q = datastore
+                .createQuery('Character')
+                .hasAncestor(ancestor)
+                .limit(5);
+            const [firstEntities, info] = await datastore.runQuery(q);
             assert.strictEqual(firstEntities.length, 5);
-            const secondQ = datastore.createQuery('Character')
+            const secondQ = datastore
+                .createQuery('Character')
                 .hasAncestor(ancestor)
                 .start(info.endCursor);
-            const [secondEntities] = yield datastore.runQuery(secondQ);
+            const [secondEntities] = await datastore.runQuery(secondQ);
             assert.strictEqual(secondEntities.length, 3);
-        }));
-        it('should not go over a limit', () => __awaiter(this, void 0, void 0, function* () {
+        });
+        it('should not go over a limit', async () => {
             const limit = 3;
-            const q = datastore.createQuery('Character').hasAncestor(ancestor).limit(limit);
-            const [results] = yield datastore.runQuery(q);
+            const q = datastore
+                .createQuery('Character')
+                .hasAncestor(ancestor)
+                .limit(limit);
+            const [results] = await datastore.runQuery(q);
             assert.strictEqual(results.length, limit);
-        }));
+        });
         it('should run a query as a stream', done => {
             const q = datastore.createQuery('Character').hasAncestor(ancestor);
             let resultsReturned = 0;
-            datastore.runQueryStream(q)
+            datastore
+                .runQueryStream(q)
                 .on('error', done)
                 .on('data', () => resultsReturned++)
                 .on('end', () => {
@@ -415,9 +423,13 @@ describe('Datastore', () => {
         });
         it('should not go over a limit with a stream', done => {
             const limit = 3;
-            const q = datastore.createQuery('Character').hasAncestor(ancestor).limit(limit);
+            const q = datastore
+                .createQuery('Character')
+                .hasAncestor(ancestor)
+                .limit(limit);
             let resultsReturned = 0;
-            datastore.runQueryStream(q)
+            datastore
+                .runQueryStream(q)
                 .on('error', done)
                 .on('data', () => resultsReturned++)
                 .on('end', () => {
@@ -425,128 +437,141 @@ describe('Datastore', () => {
                 done();
             });
         });
-        it('should filter queries with simple indexes', () => __awaiter(this, void 0, void 0, function* () {
-            const q = datastore.createQuery('Character')
+        it('should filter queries with simple indexes', async () => {
+            const q = datastore
+                .createQuery('Character')
                 .hasAncestor(ancestor)
                 .filter('appearances', '>=', 20);
-            const [entities] = yield datastore.runQuery(q);
+            const [entities] = await datastore.runQuery(q);
             assert.strictEqual(entities.length, 6);
-        }));
-        it('should filter queries with defined indexes', () => __awaiter(this, void 0, void 0, function* () {
-            const q = datastore.createQuery('Character')
+        });
+        it('should filter queries with defined indexes', async () => {
+            const q = datastore
+                .createQuery('Character')
                 .hasAncestor(ancestor)
                 .filter('family', 'Stark')
                 .filter('appearances', '>=', 20);
-            const [entities] = yield datastore.runQuery(q);
+            const [entities] = await datastore.runQuery(q);
             assert.strictEqual(entities.length, 6);
-        }));
-        it('should filter by ancestor', () => __awaiter(this, void 0, void 0, function* () {
+        });
+        it('should filter by ancestor', async () => {
             const q = datastore.createQuery('Character').hasAncestor(ancestor);
-            const [entities] = yield datastore.runQuery(q);
+            const [entities] = await datastore.runQuery(q);
             assert.strictEqual(entities.length, characters.length);
-        }));
-        it('should filter by key', () => __awaiter(this, void 0, void 0, function* () {
+        });
+        it('should filter by key', async () => {
             const key = datastore.key(['Book', 'GoT', 'Character', 'Rickard']);
-            const q = datastore.createQuery('Character')
+            const q = datastore
+                .createQuery('Character')
                 .hasAncestor(ancestor)
                 .filter('__key__', key);
-            const [entities] = yield datastore.runQuery(q);
+            const [entities] = await datastore.runQuery(q);
             assert.strictEqual(entities.length, 1);
-        }));
-        it('should order queries', () => __awaiter(this, void 0, void 0, function* () {
-            const q = datastore.createQuery('Character')
+        });
+        it('should order queries', async () => {
+            const q = datastore
+                .createQuery('Character')
                 .hasAncestor(ancestor)
                 .order('appearances');
-            const [entities] = yield datastore.runQuery(q);
+            const [entities] = await datastore.runQuery(q);
             assert.strictEqual(entities[0].name, characters[0].name);
             assert.strictEqual(entities[7].name, characters[3].name);
-        }));
-        it('should select projections', () => __awaiter(this, void 0, void 0, function* () {
-            const q = datastore.createQuery('Character').hasAncestor(ancestor).select([
-                'name', 'family'
-            ]);
-            const [entities] = yield datastore.runQuery(q);
+        });
+        it('should select projections', async () => {
+            const q = datastore
+                .createQuery('Character')
+                .hasAncestor(ancestor)
+                .select(['name', 'family']);
+            const [entities] = await datastore.runQuery(q);
+            delete entities[0][datastore.KEY];
             assert.deepStrictEqual(entities[0], {
                 name: 'Arya',
                 family: 'Stark',
             });
+            delete entities[8][datastore.KEY];
             assert.deepStrictEqual(entities[8], {
                 name: 'Sansa',
                 family: 'Stark',
             });
-        }));
-        it('should paginate with offset and limit', () => __awaiter(this, void 0, void 0, function* () {
-            const q = datastore.createQuery('Character')
+        });
+        it('should paginate with offset and limit', async () => {
+            const q = datastore
+                .createQuery('Character')
                 .hasAncestor(ancestor)
                 .offset(2)
                 .limit(3)
                 .order('appearances');
-            const [entities, info] = yield datastore.runQuery(q);
+            const [entities, info] = await datastore.runQuery(q);
             assert.strictEqual(entities.length, 3);
             assert.strictEqual(entities[0].name, 'Robb');
             assert.strictEqual(entities[2].name, 'Catelyn');
-            const secondQ = datastore.createQuery('Character')
+            const secondQ = datastore
+                .createQuery('Character')
                 .hasAncestor(ancestor)
                 .order('appearances')
                 .start(info.endCursor);
-            const [secondEntities] = yield datastore.runQuery(secondQ);
+            const [secondEntities] = await datastore.runQuery(secondQ);
             assert.strictEqual(secondEntities.length, 3);
             assert.strictEqual(secondEntities[0].name, 'Sansa');
             assert.strictEqual(secondEntities[2].name, 'Arya');
-        }));
-        it('should resume from a start cursor', () => __awaiter(this, void 0, void 0, function* () {
-            const q = datastore.createQuery('Character')
+        });
+        it('should resume from a start cursor', async () => {
+            const q = datastore
+                .createQuery('Character')
                 .hasAncestor(ancestor)
                 .offset(2)
                 .limit(2)
                 .order('appearances');
-            const [, info] = yield datastore.runQuery(q);
-            const secondQ = datastore.createQuery('Character')
+            const [, info] = await datastore.runQuery(q);
+            const secondQ = datastore
+                .createQuery('Character')
                 .hasAncestor(ancestor)
                 .order('appearances')
                 .start(info.endCursor);
-            const [secondEntities] = yield datastore.runQuery(secondQ);
+            const [secondEntities] = await datastore.runQuery(secondQ);
             assert.strictEqual(secondEntities.length, 4);
             assert.strictEqual(secondEntities[0].name, 'Catelyn');
             assert.strictEqual(secondEntities[3].name, 'Arya');
-        }));
-        it('should group queries', () => __awaiter(this, void 0, void 0, function* () {
-            const q = datastore.createQuery('Character')
+        });
+        it('should group queries', async () => {
+            const q = datastore
+                .createQuery('Character')
                 .hasAncestor(ancestor)
                 .groupBy('appearances');
-            const [entities] = yield datastore.runQuery(q);
+            const [entities] = await datastore.runQuery(q);
             assert.strictEqual(entities.length, characters.length - 1);
-        }));
-        it('should query from the Query object', () => __awaiter(this, void 0, void 0, function* () {
-            yield datastore.createQuery('Character').run();
-        }));
+        });
+        it('should query from the Query object', async () => {
+            await datastore.createQuery('Character').run();
+        });
     });
     describe('transactions', () => {
-        it('should run in a transaction', () => __awaiter(this, void 0, void 0, function* () {
+        it('should run in a transaction', async () => {
             const key = datastore.key(['Company', 'Google']);
             const obj = {
                 url: 'www.google.com',
             };
             const transaction = datastore.transaction();
-            yield transaction.run();
-            yield transaction.get(key);
+            await transaction.run();
+            await transaction.get(key);
             transaction.save({ key, data: obj });
-            yield transaction.commit();
-            const [entity] = yield datastore.get(key);
+            await transaction.commit();
+            const [entity] = await datastore.get(key);
+            delete entity[datastore.KEY];
             assert.deepStrictEqual(entity, obj);
-        }));
-        it('should commit all saves and deletes at the end', () => __awaiter(this, void 0, void 0, function* () {
+        });
+        it('should commit all saves and deletes at the end', async () => {
             const deleteKey = datastore.key(['Company', 'Subway']);
             const key = datastore.key(['Company', 'Google']);
             const incompleteKey = datastore.key('Company');
-            yield datastore.save({
+            await datastore.save({
                 key: deleteKey,
                 data: {},
             });
             const transaction = datastore.transaction();
-            yield transaction.run();
+            await transaction.run();
             transaction.delete(deleteKey);
-            yield transaction.save([
+            await transaction.save([
                 {
                     key,
                     data: { rating: 10 },
@@ -556,23 +581,23 @@ describe('Datastore', () => {
                     data: { rating: 100 },
                 },
             ]);
-            yield transaction.commit();
+            await transaction.commit();
             // Incomplete key should have been given an ID.
             assert.strictEqual(incompleteKey.path.length, 2);
-            const [[deletedEntity], [fetchedEntity]] = yield Promise.all([
+            const [[deletedEntity], [fetchedEntity]] = await Promise.all([
                 // Deletes the key that is in the deletion queue.
                 datastore.get(deleteKey),
                 // Updates data on the key.
-                datastore.get(key)
+                datastore.get(key),
             ]);
             assert.strictEqual(typeof deletedEntity, 'undefined');
             assert.strictEqual(fetchedEntity.rating, 10);
-        }));
-        it('should use the last modification to a key', () => __awaiter(this, void 0, void 0, function* () {
+        });
+        it('should use the last modification to a key', async () => {
             const incompleteKey = datastore.key('Company');
             const key = datastore.key(['Company', 'Google']);
             const transaction = datastore.transaction();
-            yield transaction.run();
+            await transaction.run();
             transaction.save([
                 {
                     key,
@@ -588,42 +613,42 @@ describe('Datastore', () => {
                 },
             ]);
             transaction.delete(key);
-            yield transaction.commit();
+            await transaction.commit();
             // Should not return a result.
-            const [entity] = yield datastore.get(key);
+            const [entity] = await datastore.get(key);
             assert.strictEqual(entity, undefined);
             // Incomplete key should have been given an id.
             assert.strictEqual(incompleteKey.path.length, 2);
-        }));
-        it('should query within a transaction', () => __awaiter(this, void 0, void 0, function* () {
+        });
+        it('should query within a transaction', async () => {
             const transaction = datastore.transaction();
-            yield transaction.run();
+            await transaction.run();
             const query = transaction.createQuery('Company');
             let entities;
             try {
-                [entities] = yield query.run();
+                [entities] = await query.run();
             }
             catch (e) {
-                yield transaction.rollback();
+                await transaction.rollback();
                 return;
             }
             assert(entities.length > 0);
-            yield transaction.commit();
-        }));
-        it('should read in a readOnly transaction', () => __awaiter(this, void 0, void 0, function* () {
+            await transaction.commit();
+        });
+        it('should read in a readOnly transaction', async () => {
             const transaction = datastore.transaction({ readOnly: true });
             const key = datastore.key(['Company', 'Google']);
-            yield transaction.run();
-            yield transaction.get(key);
-        }));
-        it('should not write in a readOnly transaction', () => __awaiter(this, void 0, void 0, function* () {
+            await transaction.run();
+            await transaction.get(key);
+        });
+        it('should not write in a readOnly transaction', async () => {
             const transaction = datastore.transaction({ readOnly: true });
             const key = datastore.key(['Company', 'Google']);
-            yield transaction.run();
-            yield transaction.get(key);
+            await transaction.run();
+            await transaction.get(key);
             transaction.save({ key, data: {} });
-            yield assertRejects(transaction.commit());
-        }));
+            await assertRejects(transaction.commit());
+        });
     });
 });
 //# sourceMappingURL=datastore.js.map

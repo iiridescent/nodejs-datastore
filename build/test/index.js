@@ -68,8 +68,7 @@ const fakeGoogleGax = {
             this.grpc = {
                 credentials: {
                     createInsecure() {
-                        return (createInsecureOverride || (() => { }))
-                            .apply(null, arguments);
+                        return (createInsecureOverride || (() => { })).apply(null, arguments);
                     },
                 },
             };
@@ -170,9 +169,9 @@ describe('Datastore', () => {
         it('should set the default base URL', () => {
             assert.strictEqual(datastore.defaultBaseUrl_, 'datastore.googleapis.com');
         });
-        it('should set default API connection details', (done) => {
+        it('should set default API connection details', done => {
             const determineBaseUrl_ = Datastore.prototype.determineBaseUrl_;
-            Datastore.prototype.determineBaseUrl_ = (customApiEndpoint) => {
+            Datastore.prototype.determineBaseUrl_ = customApiEndpoint => {
                 Datastore.prototype.determineBaseUrl_ = determineBaseUrl_;
                 assert.strictEqual(customApiEndpoint, OPTIONS.apiEndpoint);
                 done();

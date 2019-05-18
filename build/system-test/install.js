@@ -14,20 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const execa = require("execa");
+const cp = require("child_process");
 const mv = require("mv");
 const ncp_1 = require("ncp");
 const tmp = require("tmp");
 const util_1 = require("util");
+const execSync = (cmd, opts) => cp.execSync(cmd, Object.assign({ encoding: 'utf-8' }, opts));
 const keep = false;
 const mvp = util_1.promisify(mv);
 const ncpp = util_1.promisify(ncp_1.ncp);
@@ -39,14 +32,20 @@ describe('📦 pack and install', () => {
      * Create a staging directory with temp fixtures used to test on a fresh
      * application.
      */
-    it('should be able to use the d.ts', () => __awaiter(this, void 0, void 0, function* () {
-        yield execa('npm', ['pack', '--unsafe-perm']);
+    it('should be able to use the d.ts', async () => {
+        execSync('npm pack --unsafe-perm');
         const tarball = `google-cloud-datastore-${pkg.version}.tgz`;
-        yield mvp(tarball, `${stagingPath}/datastore.tgz`);
-        yield ncpp('system-test/fixtures/sample', `${stagingPath}/`);
-        yield execa('npm', ['install', '--unsafe-perm'], { cwd: `${stagingPath}/`, stdio: 'inherit' });
-        yield execa('node', ['--throw-deprecation', 'build/src/index.js'], { cwd: `${stagingPath}/`, stdio: 'inherit' });
-    }));
+        await mvp(tarball, `${stagingPath}/datastore.tgz`);
+        await ncpp('system-test/fixtures/sample', `${stagingPath}/`);
+        execSync('npm install --unsafe-perm', {
+            cwd: `${stagingPath}/`,
+            stdio: 'inherit',
+        });
+        execSync('node --throw-deprecation build/src/index.js', {
+            cwd: `${stagingPath}/`,
+            stdio: 'inherit',
+        });
+    });
     /**
      * CLEAN UP - remove the staging directory when done.
      */

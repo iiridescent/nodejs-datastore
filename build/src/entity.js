@@ -461,8 +461,7 @@ var entity;
         const excludeFromIndexes = entityObject.excludeFromIndexes;
         const entityProto = {
             key: null,
-            properties: Object.keys(properties)
-                .reduce((encoded, key) => {
+            properties: Object.keys(properties).reduce((encoded, key) => {
                 encoded[key] = entity.encodeValue(properties[key]);
                 return encoded;
             }, 

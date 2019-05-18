@@ -66,10 +66,54 @@ class Transaction extends request_1.DatastoreRequest {
         // Queue the requests to make when we send the transactional commit.
         this.requests_ = [];
     }
+    /*! Developer Documentation
+     *
+     * Below, we override two methods that we inherit from DatastoreRequest:
+     * `delete` and `save`. This is done because:
+     *
+     *   A) the documentation needs to be different for a transactional save, and
+     *   B) we build up a "modifiedEntities_" array on this object, used to build
+     *      the final commit request with.
+     */
+    /**
+     * Commit the remote transaction and finalize the current transaction
+     * instance.
+     *
+     * If the commit request fails, we will automatically rollback the
+     * transaction.
+     *
+     * @param {object} [gaxOptions] Request configuration options, outlined here:
+     *     https://googleapis.github.io/gax-nodejs/global.html#CallOptions.
+     * @param {function} callback The callback function.
+     * @param {?error} callback.err An error returned while making this request.
+     *   If the commit fails, we automatically try to rollback the transaction
+     * (see {module:datastore/transaction#rollback}).
+     * @param {object} callback.apiResponse The full API response.
+     *
+     * @example
+     * const {Datastore} = require('@google-cloud/datastore');
+     * const datastore = new Datastore();
+     * const transaction = datastore.transaction();
+     *
+     * transaction.commit((err, apiResponse) => {
+     *   if (err) {
+     *     // Transaction could not be committed.
+     *   }
+     * });
+     *
+     * //-
+     * // If the callback is omitted, we'll return a Promise.
+     * //-
+     * transaction.commit().then((data) => {
+     *   const apiResponse = data[0];
+     * });
+     */
     commit(gaxOptionsOrCallback, cb) {
-        const callback = typeof gaxOptionsOrCallback === 'function' ?
-            gaxOptionsOrCallback :
-            typeof cb === 'function' ? cb : (() => { });
+        const callback = typeof gaxOptionsOrCallback === 'function'
+            ? gaxOptionsOrCallback
+            : typeof cb === 'function'
+                ? cb
+                : () => { };
         const gaxOptions = typeof gaxOptionsOrCallback === 'object' ? gaxOptionsOrCallback : {};
         if (this.skipCommit) {
             setImmediate(callback);
@@ -109,14 +153,12 @@ class Transaction extends request_1.DatastoreRequest {
             // order.
             .reduce((acc, entityObject) => {
             const lastEntityObject = acc[acc.length - 1];
-            const sameMethod = lastEntityObject &&
-                entityObject.method === lastEntityObject.method;
+            const sameMethod = lastEntityObject && entityObject.method === lastEntityObject.method;
             if (!lastEntityObject || !sameMethod) {
                 acc.push(entityObject);
             }
             else {
-                lastEntityObject.args =
-                    lastEntityObject.args.concat(entityObject.args);
+                lastEntityObject.args = lastEntityObject.args.concat(entityObject.args);
             }
             return acc;
         }, [])
@@ -246,6 +288,40 @@ class Transaction extends request_1.DatastoreRequest {
             });
         });
     }
+    /**
+     * Reverse a transaction remotely and finalize the current transaction
+     * instance.
+     *
+     * @param {object} [gaxOptions] Request configuration options, outlined here:
+     *     https://googleapis.github.io/gax-nodejs/global.html#CallOptions.
+     * @param {function} callback The callback function.
+     * @param {?error} callback.err An error returned while making this request.
+     * @param {object} callback.apiResponse The full API response.
+     *
+     * @example
+     * const {Datastore} = require('@google-cloud/datastore');
+     * const datastore = new Datastore();
+     * const transaction = datastore.transaction();
+     *
+     * transaction.run((err) => {
+     *   if (err) {
+     *     // Error handling omitted.
+     *   }
+     *
+     *   transaction.rollback((err) => {
+     *     if (!err) {
+     *       // Transaction rolled back successfully.
+     *     }
+     *   });
+     * });
+     *
+     * //-
+     * // If the callback is omitted, we'll return a Promise.
+     * //-
+     * transaction.rollback().then((data) => {
+     *   const apiResponse = data[0];
+     * });
+     */
     rollback(gaxOptionsOrCallback, cb) {
         const gaxOptions = typeof gaxOptionsOrCallback === 'object' ? gaxOptionsOrCallback : {};
         const callback = typeof gaxOptionsOrCallback === 'function' ? gaxOptionsOrCallback : cb;
@@ -258,6 +334,56 @@ class Transaction extends request_1.DatastoreRequest {
             callback(err || null, resp);
         });
     }
+    /**
+     * Begin a remote transaction. In the callback provided, run your
+     * transactional commands.
+     *
+     * @param {object} [options] Configuration object.
+     * @param {object} [options.gaxOptions] Request configuration options, outlined
+     *     here: https://googleapis.github.io/gax-nodejs/global.html#CallOptions.
+     * @param {boolean} [options.readOnly=false] A read-only transaction cannot
+     *     modify entities.
+     * @param {string} [options.transactionId] The ID of a previous transaction.
+     * @param {function} callback The function to execute within the context of
+     *     a transaction.
+     * @param {?error} callback.err An error returned while making this request.
+     * @param {Transaction} callback.transaction This transaction
+     *     instance.
+     * @param {object} callback.apiResponse The full API response.
+     *
+     * @example
+     * const {Datastore} = require('@google-cloud/datastore');
+     * const datastore = new Datastore();
+     * const transaction = datastore.transaction();
+     *
+     * transaction.run((err, transaction) => {
+     *   // Perform Datastore transactional operations.
+     *   const key = datastore.key(['Company', 123]);
+     *
+     *   transaction.get(key, (err, entity) => {
+     *     entity.name = 'Google';
+     *
+     *     transaction.save({
+     *       key: key,
+     *       data: entity
+     *     });
+     *
+     *     transaction.commit((err) => {
+     *       if (!err) {
+     *         // Data saved successfully.
+     *       }
+     *     });
+     *   });
+     * });
+     *
+     * //-
+     * // If the callback is omitted, we'll return a Promise.
+     * //-
+     * transaction.run().then((data) => {
+     *   const transaction = data[0];
+     *   const apiResponse = data[1];
+     * });
+     */
     run(optionsOrCallback, cb) {
         const options = typeof optionsOrCallback === 'object' ? optionsOrCallback : {};
         const callback = typeof optionsOrCallback === 'function' ? optionsOrCallback : cb;
@@ -270,7 +396,7 @@ class Transaction extends request_1.DatastoreRequest {
         }
         if (options.transactionId || this.id) {
             reqOpts.transactionOptions.readWrite = {
-                previousTransaction: options.transactionId || this.id
+                previousTransaction: options.transactionId || this.id,
             };
         }
         if (options.transactionOptions) {
@@ -421,7 +547,7 @@ class Transaction extends request_1.DatastoreRequest {
      */
     // tslint:disable-next-line no-any
     save(entities) {
-        arrify(entities).forEach(ent => {
+        arrify(entities).forEach((ent) => {
             this.modifiedEntities_.push({
                 entity: {
                     key: ent.key,

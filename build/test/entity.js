@@ -885,7 +885,7 @@ describe('entity', () => {
         });
     });
     describe('isKeyComplete', () => {
-        it('should convert key to key proto', (done) => {
+        it('should convert key to key proto', done => {
             const key = new entity.Key({
                 path: ['Kind', 123],
             });
@@ -935,7 +935,7 @@ describe('entity', () => {
                 },
             ],
         };
-        it('should set the namespace', (done) => {
+        it('should set the namespace', done => {
             entity.Key = class {
                 constructor(keyOptions) {
                     assert.strictEqual(keyOptions.namespace, NAMESPACE);
@@ -944,7 +944,7 @@ describe('entity', () => {
             };
             entity.keyFromKeyProto(keyProto);
         });
-        it('should create a proper Key', (done) => {
+        it('should create a proper Key', done => {
             entity.Key = class {
                 constructor(keyOptions) {
                     assert.deepStrictEqual(keyOptions, {
@@ -965,7 +965,7 @@ describe('entity', () => {
             };
             assert.strictEqual(entity.keyFromKeyProto(keyProto), expectedValue);
         });
-        it('should throw if path is invalid', (done) => {
+        it('should throw if path is invalid', done => {
             const keyProtoInvalid = {
                 partitionId: {
                     namespaceId: 'Namespace',
@@ -1040,7 +1040,7 @@ describe('entity', () => {
             assert.strictEqual(keyProtoWithNs.path[0].id, undefined);
             assert.strictEqual(keyProtoWithNs.path[0].name, undefined);
         });
-        it('should throw if key contains 0 items', (done) => {
+        it('should throw if key contains 0 items', done => {
             const key = new entity.Key({
                 path: [],
             });
@@ -1053,7 +1053,7 @@ describe('entity', () => {
                 done();
             }
         });
-        it('should throw if key path contains null ids', (done) => {
+        it('should throw if key path contains null ids', done => {
             const key = new entity.Key({
                 namespace: 'Namespace',
                 path: ['Kind1', null, 'Company'],
@@ -1152,7 +1152,8 @@ describe('entity', () => {
                 path: ['Kind2', 'somename'],
             });
             const ds = new src_1.Datastore({ projectId: 'project-id' });
-            const query = ds.createQuery('Kind1')
+            const query = ds
+                .createQuery('Kind1')
                 .filter('name', 'John')
                 .start('start')
                 .end('end')
@@ -1168,7 +1169,10 @@ describe('entity', () => {
             const ds = new src_1.Datastore({ projectId: 'project-id' });
             const startVal = Buffer.from('start');
             const endVal = Buffer.from('end');
-            const query = ds.createQuery('Kind1').start(startVal).end(endVal);
+            const query = ds
+                .createQuery('Kind1')
+                .start(startVal)
+                .end(endVal);
             const queryProto = entity.queryToQueryProto(query);
             assert.strictEqual(queryProto.endCursor, endVal);
             assert.strictEqual(queryProto.startCursor, startVal);

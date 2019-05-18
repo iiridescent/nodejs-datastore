@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { GoogleAuth, GoogleAuthOptions } from 'google-auth-library';
-import { ChannelCredentials } from 'grpc';
+import { ChannelCredentials } from '@grpc/grpc-js';
 import { entity } from './entity';
 import { Query } from './query';
 import { DatastoreRequest } from './request';
@@ -525,10 +525,7 @@ declare class Datastore extends DatastoreRequest {
      * const datastore = new Datastore();
      * const query = datastore.createQuery('Company');
      */
-    createQuery(kind?: string): Query;
-    createQuery(kind?: string[]): Query;
-    createQuery(namespace: string, kind: string): Query;
-    createQuery(namespace: string, kind: string[]): Query;
+    createQuery(namespaceOrKind?: string | string[], kind?: string | string[]): Query;
     /**
      * Helper to create a Key object, scoped to the instance's namespace by
      * default.
@@ -578,9 +575,7 @@ declare class Datastore extends DatastoreRequest {
      *   path: ['Company', 123]
      * });
      */
-    key(options: entity.KeyOptions): entity.Key;
-    key(path: PathType[]): entity.Key;
-    key(path: string): entity.Key;
+    key(options: string | entity.KeyOptions | PathType[]): entity.Key;
     /**
      * Helper function to check if something is a Datastore Key object.
      *

@@ -37,12 +37,13 @@ describe('Query', () => {
             assert.strictEqual(query.kinds, KINDS);
         });
         it('should use null for all falsy namespace values', () => {
-            [new Query(SCOPE, '', KINDS),
+            [
+                new Query(SCOPE, '', KINDS),
                 new Query(SCOPE, null, KINDS),
                 new Query(SCOPE, undefined, KINDS),
                 new Query(SCOPE, 0, KINDS),
                 new Query(SCOPE, KINDS),
-            ].forEach((query) => {
+            ].forEach(query => {
                 assert.strictEqual(query.namespace, null);
             });
         });
@@ -131,7 +132,9 @@ describe('Query', () => {
             assert.strictEqual(query.orders[0].sign, '-');
         });
         it('should support both ascending and descending', () => {
-            const query = new Query(['kind1']).order('name').order('count', { descending: true });
+            const query = new Query(['kind1'])
+                .order('name')
+                .order('count', { descending: true });
             assert.strictEqual(query.orders[0].name, 'name');
             assert.strictEqual(query.orders[0].sign, '+');
             assert.strictEqual(query.orders[1].name, 'count');
@@ -218,7 +221,7 @@ describe('Query', () => {
         });
     });
     describe('run', () => {
-        it('should call the parent instance runQuery correctly', (done) => {
+        it('should call the parent instance runQuery correctly', done => {
             const args = [{}, () => { }];
             query.scope.runQuery = function () {
                 assert.strictEqual(this, query.scope);

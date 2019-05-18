@@ -253,61 +253,6 @@ declare class Query {
      * const offsetQuery = companyQuery.offset(100);
      */
     offset(n: number): this;
-    /**
-     * Run the query.
-     *
-     * @param {object} [options] Optional configuration.
-     * @param {string} [options.consistency] Specify either `strong` or `eventual`.
-     *     If not specified, default values are chosen by Datastore for the
-     *     operation. Learn more about strong and eventual consistency
-     *     [here](https://cloud.google.com/datastore/docs/articles/balancing-strong-and-eventual-consistency-with-google-cloud-datastore).
-     * @param {function} [callback] The callback function. If omitted, a readable
-     *     stream instance is returned.
-     * @param {?error} callback.err An error returned while making this request
-     * @param {object[]} callback.entities A list of entities.
-     * @param {object} callback.info An object useful for pagination.
-     * @param {?string} callback.info.endCursor Use this in a follow-up query to
-     *     begin from where these results ended.
-     * @param {string} callback.info.moreResults Datastore responds with one of:
-     *
-     *     - {@link Datastore#MORE_RESULTS_AFTER_LIMIT}: There *may* be more
-     *       results after the specified limit.
-     *     - {@link Datastore#MORE_RESULTS_AFTER_CURSOR}: There *may* be more
-     *       results after the specified end cursor.
-     *     - {@link Datastore#NO_MORE_RESULTS}: There are no more results.
-     *
-     * @example
-     * const {Datastore} = require('@google-cloud/datastore');
-     * const datastore = new Datastore();
-     * const query = datastore.createQuery('Company');
-     *
-     * query.run((err, entities, info) => {
-     *   // entities = An array of records.
-     *
-     *   // Access the Key object for an entity.
-     *   const firstEntityKey = entities[0][datastore.KEY];
-     * });
-     *
-     * //-
-     * // A keys-only query returns just the keys of the result entities instead
-     * of
-     * // the entities themselves, at lower latency and cost.
-     * //-
-     * query.select('__key__');
-     *
-     * query.run((err, entities) => {
-     *   const keys = entities.map((entity) => {
-     *     return entity[datastore.KEY];
-     *   });
-     * });
-     *
-     * //-
-     * // If the callback is omitted, we'll return a Promise.
-     * //-
-     * query.run().then((data) => {
-     *   const entities = data[0];
-     * });
-     */
     run(options?: RunQueryOptions): Promise<RunQueryResponse>;
     run(options: RunQueryOptions, callback: RunQueryCallback): void;
     run(callback: RunQueryCallback): void;

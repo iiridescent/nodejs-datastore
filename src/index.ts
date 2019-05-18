@@ -24,10 +24,10 @@
  * @namespace google.protobuf
  */
 
-import * as arrify from 'arrify';
+import arrify = require('arrify');
 import {GoogleAuth, GoogleAuthOptions} from 'google-auth-library';
 import {GrpcClient} from 'google-gax';
-import {ChannelCredentials} from 'grpc';
+import {ChannelCredentials} from '@grpc/grpc-js';
 import * as is from 'is';
 
 import {entity} from './entity';
@@ -395,7 +395,7 @@ class Datastore extends DatastoreRequest {
     this.namespace = options.namespace;
 
     const userProvidedProjectId =
-        options.projectId || process.env.DATASTORE_PROJECT_ID;
+      options.projectId || process.env.DATASTORE_PROJECT_ID;
     const defaultProjectId = '{{projectId}}';
 
     /**
@@ -408,15 +408,16 @@ class Datastore extends DatastoreRequest {
     this.determineBaseUrl_(options.apiEndpoint);
 
     this.options = Object.assign(
-        {
-          libName: 'gccl',
-          libVersion: require('../../package.json').version,
-          scopes: gapic.v1.DatastoreClient.scopes,
-          servicePath: this.baseUrl_,
-          port: is.number(this.port_) ? this.port_ : 443,
-          projectId: userProvidedProjectId,
-        },
-        options);
+      {
+        libName: 'gccl',
+        libVersion: require('../../package.json').version,
+        scopes: gapic.v1.DatastoreClient.scopes,
+        servicePath: this.baseUrl_,
+        port: is.number(this.port_) ? this.port_ : 443,
+        projectId: userProvidedProjectId,
+      },
+      options
+    );
     if (this.customEndpoint_) {
       this.options.sslCreds = grpc.credentials.createInsecure();
     }
@@ -536,11 +537,11 @@ class Datastore extends DatastoreRequest {
    *   datastore.int('100000000000001234')
    * ]);
    */
-  static int(value: number|string) {
+  static int(value: number | string) {
     return new entity.Int(value);
   }
 
-  int(value: number|string) {
+  int(value: number | string) {
     return Datastore.int(value);
   }
 
@@ -631,12 +632,10 @@ class Datastore extends DatastoreRequest {
    * const datastore = new Datastore();
    * const query = datastore.createQuery('Company');
    */
-  createQuery(kind?: string): Query;
-  createQuery(kind?: string[]): Query;
-  createQuery(namespace: string, kind: string): Query;
-  createQuery(namespace: string, kind: string[]): Query;
-  createQuery(namespaceOrKind?: string|string[], kind?: string|string[]):
-      Query {
+  createQuery(
+    namespaceOrKind?: string | string[],
+    kind?: string | string[]
+  ): Query {
     let namespace = namespaceOrKind as string;
     if (arguments.length < 2) {
       kind = namespaceOrKind;
@@ -694,14 +693,13 @@ class Datastore extends DatastoreRequest {
    *   path: ['Company', 123]
    * });
    */
-  key(options: entity.KeyOptions): entity.Key;
-  key(path: PathType[]): entity.Key;
-  key(path: string): entity.Key;
-  key(options: string|entity.KeyOptions|PathType[]): entity.Key {
-    options = is.object(options) ? options : {
-      namespace: this.namespace,
-      path: arrify(options),
-    };
+  key(options: string | entity.KeyOptions | PathType[]): entity.Key {
+    options = is.object(options)
+      ? options
+      : {
+          namespace: this.namespace,
+          path: arrify(options) as PathType[],
+        };
     return new entity.Key(options as entity.KeyOptions);
   }
 
@@ -769,9 +767,10 @@ class Datastore extends DatastoreRequest {
       this.port_ = Number(baseUrl.match(port)![1]);
     }
 
-    this.baseUrl_ = baseUrl.replace(leadingProtocol, '')
-                        .replace(port, '')
-                        .replace(trailingSlashes, '');
+    this.baseUrl_ = baseUrl
+      .replace(leadingProtocol, '')
+      .replace(port, '')
+      .replace(trailingSlashes, '');
   }
 
   /**

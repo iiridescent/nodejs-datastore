@@ -15,13 +15,13 @@
  */
 
 import {promisifyAll} from '@google-cloud/promisify';
-import * as arrify from 'arrify';
+import arrify = require('arrify');
 import {CallOptions} from 'google-gax';
 import {google} from '../proto/datastore';
 import {Datastore, TransactionOptions} from '.';
 import {entity, Entity} from './entity';
 import {Query} from './query';
-import {DatastoreRequest} from './request';
+import {DatastoreRequest, CommitResponse} from './request';
 
 type RollbackCallback = google.datastore.v1.Datastore.RollbackCallback;
 type RollbackResponse = google.datastore.v1.RollbackResponse;
@@ -130,21 +130,18 @@ class Transaction extends DatastoreRequest {
    *   const apiResponse = data[0];
    * });
    */
-  commit(gaxOptions?: CallOptions): Promise<google.datastore.v1.CommitResponse>;
-  commit(callback: google.datastore.v1.Datastore.CommitCallback): void;
   commit(
-      gaxOptions: CallOptions,
-      callback: google.datastore.v1.Datastore.CommitCallback): void;
-  commit(
-      gaxOptionsOrCallback?: CallOptions|
-      google.datastore.v1.Datastore.CommitCallback,
-      cb?: google.datastore.v1.Datastore.CommitCallback):
-      void|Promise<google.datastore.v1.CommitResponse> {
-    const callback = typeof gaxOptionsOrCallback === 'function' ?
-        gaxOptionsOrCallback :
-        typeof cb === 'function' ? cb : (() => {});
+    gaxOptionsOrCallback?: CallOptions | CommitCallback,
+    cb?: CommitCallback
+  ): void | Promise<CommitResponse> {
+    const callback =
+      typeof gaxOptionsOrCallback === 'function'
+        ? gaxOptionsOrCallback
+        : typeof cb === 'function'
+        ? cb
+        : () => {};
     const gaxOptions =
-        typeof gaxOptionsOrCallback === 'object' ? gaxOptionsOrCallback : {};
+      typeof gaxOptionsOrCallback === 'object' ? gaxOptionsOrCallback : {};
 
     if (this.skipCommit) {
       setImmediate(callback);
@@ -154,108 +151,108 @@ class Transaction extends DatastoreRequest {
     const keys: Entities = {};
 
     this.modifiedEntities_
-        // Reverse the order of the queue to respect the "last queued request
-        // wins" behavior.
-        .reverse()
-        // Limit the operations we're going to send through to only the most
-        // recently queued operations. E.g., if a user tries to save with the
-        // same key they just asked to be deleted, the delete request will be
-        // ignored, giving preference to the save operation.
-        .filter((modifiedEntity: Entity) => {
-          const key = modifiedEntity.entity.key;
+      // Reverse the order of the queue to respect the "last queued request
+      // wins" behavior.
+      .reverse()
+      // Limit the operations we're going to send through to only the most
+      // recently queued operations. E.g., if a user tries to save with the
+      // same key they just asked to be deleted, the delete request will be
+      // ignored, giving preference to the save operation.
+      .filter((modifiedEntity: Entity) => {
+        const key = modifiedEntity.entity.key;
 
-          if (!entity.isKeyComplete(key)) return true;
+        if (!entity.isKeyComplete(key)) return true;
 
-          const stringifiedKey = JSON.stringify(modifiedEntity.entity.key);
+        const stringifiedKey = JSON.stringify(modifiedEntity.entity.key);
 
-          if (!keys[stringifiedKey]) {
-            keys[stringifiedKey] = true;
-            return true;
-          }
+        if (!keys[stringifiedKey]) {
+          keys[stringifiedKey] = true;
+          return true;
+        }
 
-          return false;
-        })
-        // Group entities together by method: `save` mutations, then `delete`.
-        // Note: `save` mutations being first is required to maintain order when
-        // assigning IDs to incomplete keys.
-        .sort((a, b) => {
-          return a.method < b.method ? 1 : a.method > b.method ? -1 : 0;
-        })
-        // Group arguments together so that we only make one call to each
-        // method. This is important for `DatastoreRequest.save`, especially, as
-        // that method handles assigning auto-generated IDs to the original keys
-        // passed in. When we eventually execute the `save` method's API
-        // callback, having all the keys together is necessary to maintain
-        // order.
-        .reduce(
-            (acc: Entities, entityObject: Entity) => {
-              const lastEntityObject = acc[acc.length - 1];
-              const sameMethod = lastEntityObject &&
-                  entityObject.method === lastEntityObject.method;
+        return false;
+      })
+      // Group entities together by method: `save` mutations, then `delete`.
+      // Note: `save` mutations being first is required to maintain order when
+      // assigning IDs to incomplete keys.
+      .sort((a, b) => {
+        return a.method < b.method ? 1 : a.method > b.method ? -1 : 0;
+      })
+      // Group arguments together so that we only make one call to each
+      // method. This is important for `DatastoreRequest.save`, especially, as
+      // that method handles assigning auto-generated IDs to the original keys
+      // passed in. When we eventually execute the `save` method's API
+      // callback, having all the keys together is necessary to maintain
+      // order.
+      .reduce((acc: Entities, entityObject: Entity) => {
+        const lastEntityObject = acc[acc.length - 1];
+        const sameMethod =
+          lastEntityObject && entityObject.method === lastEntityObject.method;
 
-              if (!lastEntityObject || !sameMethod) {
-                acc.push(entityObject);
-              } else {
-                lastEntityObject.args =
-                    lastEntityObject.args.concat(entityObject.args);
-              }
+        if (!lastEntityObject || !sameMethod) {
+          acc.push(entityObject);
+        } else {
+          lastEntityObject.args = lastEntityObject.args.concat(
+            entityObject.args
+          );
+        }
 
-              return acc;
-            },
-            [])
-        // Call each of the mutational methods (DatastoreRequest[save,delete])
-        // to build up a `req` array on this instance. This will also build up a
-        // `callbacks` array, that is the same callback that would run if we
-        // were using `save` and `delete` outside of a transaction, to process
-        // the response from the API.
-        .forEach(
-            (modifiedEntity: {method: string; args: {reverse: () => void}}) => {
-              const method = modifiedEntity.method;
-              const args = modifiedEntity.args.reverse();
-              DatastoreRequest.prototype[method].call(this, args, () => {});
-            });
+        return acc;
+      }, [])
+      // Call each of the mutational methods (DatastoreRequest[save,delete])
+      // to build up a `req` array on this instance. This will also build up a
+      // `callbacks` array, that is the same callback that would run if we
+      // were using `save` and `delete` outside of a transaction, to process
+      // the response from the API.
+      .forEach(
+        (modifiedEntity: {method: string; args: {reverse: () => void}}) => {
+          const method = modifiedEntity.method;
+          const args = modifiedEntity.args.reverse();
+          DatastoreRequest.prototype[method].call(this, args, () => {});
+        }
+      );
 
     // Take the `req` array built previously, and merge them into one request to
     // send as the final transactional commit.
     const reqOpts = {
-      mutations:
-          this.requests_
-              .map(
-                  (x: {mutations: google.datastore.v1.Mutation}) => x.mutations)
-              .reduce(
-                  (a: {concat: (arg0: Entity) => void}, b: Entity) =>
-                      a.concat(b),
-                  []),
+      mutations: this.requests_
+        .map((x: {mutations: google.datastore.v1.Mutation}) => x.mutations)
+        .reduce(
+          (a: {concat: (arg0: Entity) => void}, b: Entity) => a.concat(b),
+          []
+        ),
     };
 
     this.request_(
-        {
-          client: 'DatastoreClient',
-          method: 'commit',
-          reqOpts,
-          gaxOpts: gaxOptions || {},
-        },
-        (err, resp) => {
-          if (err) {
-            // Rollback automatically for the user.
-            this.rollback(() => {
-              // Provide the error & API response from the failed commit to the
-              // user. Even a failed rollback should be transparent. RE:
-              // https://github.com/GoogleCloudPlatform/google-cloud-node/pull/1369#discussion_r66833976
-              callback(err, resp);
-            });
-            return;
-          }
+      {
+        client: 'DatastoreClient',
+        method: 'commit',
+        reqOpts,
+        gaxOpts: gaxOptions || {},
+      },
+      (err, resp) => {
+        if (err) {
+          // Rollback automatically for the user.
+          this.rollback(() => {
+            // Provide the error & API response from the failed commit to the
+            // user. Even a failed rollback should be transparent. RE:
+            // https://github.com/GoogleCloudPlatform/google-cloud-node/pull/1369#discussion_r66833976
+            callback(err, resp);
+          });
+          return;
+        }
 
-          // The `callbacks` array was built previously. These are the callbacks
-          // that handle the API response normally when using the
-          // DatastoreRequest.save and .delete methods.
-          this.requestCallbacks_.forEach(
-              (cb: (arg0: null, arg1: Entity) => void) => {
-                cb(null, resp);
-              });
-          callback(null, resp);
-        });
+        // The `callbacks` array was built previously. These are the callbacks
+        // that handle the API response normally when using the
+        // DatastoreRequest.save and .delete methods.
+        this.requestCallbacks_.forEach(
+          (cb: (arg0: null, arg1: Entity) => void) => {
+            cb(null, resp);
+          }
+        );
+        callback(null, resp);
+      }
+    );
   }
 
   /**
@@ -296,10 +293,12 @@ class Transaction extends DatastoreRequest {
    *   });
    * });
    */
-  createQuery(namespace: string, kind?: string|string[]): Query {
+  createQuery(namespace: string, kind?: string | string[]): Query {
     return this.datastore.createQuery.call(this, namespace, kind as string[]);
   }
 
+  delete(): Promise<CommitResponse>;
+  delete(entities: Entities): void;
   /**
    * Delete all entities identified with the specified key(s) in the current
    * transaction.
@@ -332,7 +331,7 @@ class Transaction extends DatastoreRequest {
    *   });
    * });
    */
-  delete(entities: Entity): void {
+  delete(entities?: Entities): void | Promise<CommitResponse> {
     arrify(entities).forEach((ent: Entity) => {
       this.modifiedEntities_.push({
         entity: {
@@ -343,7 +342,6 @@ class Transaction extends DatastoreRequest {
       });
     });
   }
-
   /**
    * Reverse a transaction remotely and finalize the current transaction
    * instance.
@@ -378,27 +376,26 @@ class Transaction extends DatastoreRequest {
    *   const apiResponse = data[0];
    * });
    */
-  rollback(gaxOptions?: CallOptions): Promise<RollbackResponse>;
-  rollback(callback: RollbackCallback): void;
-  rollback(gaxOptions: CallOptions, callback: RollbackCallback): void;
   rollback(
-      gaxOptionsOrCallback?: CallOptions|RollbackCallback,
-      cb?: RollbackCallback): void|Promise<RollbackResponse> {
+    gaxOptionsOrCallback?: CallOptions | RollbackCallback,
+    cb?: Function
+  ): void | Promise<RollbackResponse> {
     const gaxOptions =
-        typeof gaxOptionsOrCallback === 'object' ? gaxOptionsOrCallback : {};
+      typeof gaxOptionsOrCallback === 'object' ? gaxOptionsOrCallback : {};
     const callback =
-        typeof gaxOptionsOrCallback === 'function' ? gaxOptionsOrCallback : cb!;
+      typeof gaxOptionsOrCallback === 'function' ? gaxOptionsOrCallback : cb!;
 
     this.request_(
-        {
-          client: 'DatastoreClient',
-          method: 'rollback',
-          gaxOpts: gaxOptions || {},
-        },
-        (err, resp) => {
-          this.skipCommit = true;
-          callback(err || null, resp);
-        });
+      {
+        client: 'DatastoreClient',
+        method: 'rollback',
+        gaxOpts: gaxOptions || {},
+      },
+      (err, resp) => {
+        this.skipCommit = true;
+        callback(err || null, resp);
+      }
+    );
   }
 
   /**
@@ -451,16 +448,14 @@ class Transaction extends DatastoreRequest {
    *   const apiResponse = data[1];
    * });
    */
-  run(options?: RunOptions):
-      Promise<google.datastore.v1.BeginTransactionResponse>;
-  run(callback?: RunCallback): void;
-  run(options?: RunOptions, callback?: RunCallback): void;
-  run(optionsOrCallback?: RunOptions|RunCallback|Entity, cb?: RunCallback):
-      void|Promise<google.datastore.v1.BeginTransactionResponse> {
+  run(
+    optionsOrCallback?: RunOptions | RunCallback | Entity,
+    cb?: RunCallback
+  ): void | Promise<BeginTransactionResponse> {
     const options =
-        typeof optionsOrCallback === 'object' ? optionsOrCallback : {};
+      typeof optionsOrCallback === 'object' ? optionsOrCallback : {};
     const callback =
-        typeof optionsOrCallback === 'function' ? optionsOrCallback : cb!;
+      typeof optionsOrCallback === 'function' ? optionsOrCallback : cb!;
 
     // tslint:disable-next-line no-any
     const reqOpts: any = {
@@ -472,8 +467,8 @@ class Transaction extends DatastoreRequest {
     }
 
     if (options.transactionId || this.id) {
-      reqOpts.transactionOptions.readWrite = {
-        previousTransaction: options.transactionId || this.id
+      reqOpts.transactionOptions!.readWrite = {
+        previousTransaction: options.transactionId || this.id,
       };
     }
 
@@ -482,20 +477,21 @@ class Transaction extends DatastoreRequest {
     }
 
     this.request_(
-        {
-          client: 'DatastoreClient',
-          method: 'beginTransaction',
-          reqOpts,
-          gaxOpts: options.gaxOptions,
-        },
-        (err, resp) => {
-          if (err) {
-            callback(err, null, resp);
-            return;
-          }
-          this.id = resp.transaction;
-          callback(null, this, resp);
-        });
+      {
+        client: 'DatastoreClient',
+        method: 'beginTransaction',
+        reqOpts,
+        gaxOpts: options.gaxOptions,
+      },
+      (err, resp) => {
+        if (err) {
+          callback(err, null, resp);
+          return;
+        }
+        this.id = resp.transaction;
+        callback(null, this, resp);
+      }
+    );
   }
 
   /**
@@ -629,7 +625,7 @@ class Transaction extends DatastoreRequest {
    */
   // tslint:disable-next-line no-any
   save(entities: Entities): any {
-    arrify(entities).forEach(ent => {
+    arrify(entities).forEach((ent: Entity) => {
       this.modifiedEntities_.push({
         entity: {
           key: ent.key,
@@ -641,12 +637,22 @@ class Transaction extends DatastoreRequest {
   }
 }
 
-export type Entities = Entity|Entity[];
-export type ModifiedEntities =
-    Array<{entity: {key: Entity}; method: string; args: Entity[];}>;
-export interface RunCallback extends
-    google.datastore.v1.Datastore.BeginTransactionCallback {
-  (transaction: Transaction|null): void;
+export type Entities = Entity | Entity[];
+export type ModifiedEntities = Array<{
+  entity: {key: Entity};
+  method: string;
+  args: Entity[];
+}>;
+export type CommitCallback = google.datastore.v1.Datastore.CommitCallback;
+export type BeginTransactionResponse = [
+  google.datastore.v1.BeginTransactionResponse
+];
+export interface RunCallback {
+  (
+    error: Error | null,
+    transaction: Transaction | null,
+    response?: google.datastore.v1.BeginTransactionResponse
+  ): void;
 }
 
 export interface RunOptions {

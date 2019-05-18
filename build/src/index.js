@@ -556,6 +556,22 @@ class Datastore extends request_1.DatastoreRequest {
     isInt(value) {
         return Datastore.isInt(value);
     }
+    /**
+     * Create a query for the specified kind. See {@link Query} for all
+     * of the available methods.
+     *
+     * @see [Datastore Queries]{@link https://cloud.google.com/datastore/docs/concepts/queries}
+     * @see {@link Query}
+     *
+     * @param {string} [namespace] Namespace.
+     * @param {string} kind  The kind to query.
+     * @returns {Query}
+     *
+     * @example
+     * const {Datastore} = require('@google-cloud/datastore');
+     * const datastore = new Datastore();
+     * const query = datastore.createQuery('Company');
+     */
     createQuery(namespaceOrKind, kind) {
         let namespace = namespaceOrKind;
         if (arguments.length < 2) {
@@ -564,11 +580,62 @@ class Datastore extends request_1.DatastoreRequest {
         }
         return new query_1.Query(this, namespace, arrify(kind));
     }
+    /**
+     * Helper to create a Key object, scoped to the instance's namespace by
+     * default.
+     *
+     * You may also specify a configuration object to define a namespace and path.
+     *
+     * @param {object|string|array} [options] Key path. To specify or override a namespace,
+     *     you must use an object here to explicitly state it.
+     * @param {string|array} [options.path]  Key path.
+     * @param {string} [options.namespace] Optional namespace.
+     * @returns {Key} A newly created Key from the options given.
+     *
+     * @example
+     * <caption>Create an incomplete key with a kind value of `Company`.</caption>
+     * const {Datastore} = require('@google-cloud/datastore');
+     * const datastore = new Datastore();
+     * const key = datastore.key('Company');
+     *
+     * @example
+     * <caption>Create a complete key with a kind value of `Company` and id
+     * `123`.</caption> const {Datastore} = require('@google-cloud/datastore');
+     * const datastore = new Datastore();
+     * const key = datastore.key(['Company', 123]);
+     *
+     * @example
+     * <caption>If the ID integer is outside the bounds of a JavaScript Number
+     * object, create an Int.</caption> const {Datastore} =
+     * require('@google-cloud/datastore'); const datastore = new Datastore();
+     * const key = datastore.key([
+     *   'Company',
+     *   datastore.int('100000000000001234')
+     * ]);
+     *
+     * @example
+     * const {Datastore} = require('@google-cloud/datastore');
+     * const datastore = new Datastore();
+     * // Create a complete key with a kind value of `Company` and name `Google`.
+     * // Note: `id` is used for numeric identifiers and `name` is used otherwise.
+     * const key = datastore.key(['Company', 'Google']);
+     *
+     * @example
+     * <caption>Create a complete key from a provided namespace and
+     * path.</caption> const {Datastore} = require('@google-cloud/datastore');
+     * const datastore = new Datastore();
+     * const key = datastore.key({
+     *   namespace: 'My-NS',
+     *   path: ['Company', 123]
+     * });
+     */
     key(options) {
-        options = is.object(options) ? options : {
-            namespace: this.namespace,
-            path: arrify(options),
-        };
+        options = is.object(options)
+            ? options
+            : {
+                namespace: this.namespace,
+                path: arrify(options),
+            };
         return new entity_1.entity.Key(options);
     }
     /**
@@ -631,7 +698,8 @@ class Datastore extends request_1.DatastoreRequest {
         if (port.test(baseUrl)) {
             this.port_ = Number(baseUrl.match(port)[1]);
         }
-        this.baseUrl_ = baseUrl.replace(leadingProtocol, '')
+        this.baseUrl_ = baseUrl
+            .replace(leadingProtocol, '')
             .replace(port, '')
             .replace(trailingSlashes, '');
     }

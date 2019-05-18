@@ -18,7 +18,7 @@ import * as pjy from '@google-cloud/projectify';
 import * as pfy from '@google-cloud/promisify';
 import * as assert from 'assert';
 import * as extend from 'extend';
-import {CallOptions} from 'grpc';
+import {CallOptions} from '@grpc/grpc-js';
 import * as is from 'is';
 import * as proxyquire from 'proxyquire';
 import * as sinon from 'sinon';
@@ -28,7 +28,11 @@ import {google} from '../proto/datastore';
 import * as ds from '../src';
 import {entity, Entity, KeyProto} from '../src/entity.js';
 import {Query, QueryProto} from '../src/query.js';
-import {AllocateIdsRequestResponse, RequestConfig, RequestOptions} from '../src/request';
+import {
+  AllocateIdsRequestResponse,
+  RequestConfig,
+  RequestOptions,
+} from '../src/request';
 
 // tslint:disable-next-line no-any
 type Any = any;
@@ -48,7 +52,7 @@ const fakePjy = {
   },
 };
 
-let v1FakeClientOverride: Function|null;
+let v1FakeClientOverride: Function | null;
 const fakeV1 = {
   FakeClient: class {
     constructor() {
@@ -59,7 +63,7 @@ const fakeV1 = {
 
 class FakeQuery extends Query {}
 
-let pjyOverride: Function|null;
+let pjyOverride: Function | null;
 
 describe('Request', () => {
   // tslint:disable-next-line variable-name
@@ -70,12 +74,12 @@ describe('Request', () => {
 
   before(() => {
     Request = proxyquire('../src/request', {
-                '@google-cloud/promisify': fakePfy,
-                '@google-cloud/projectify': fakePjy,
-                './entity': {entity},
-                './query': {Query: FakeQuery},
-                './v1': fakeV1,
-              }).DatastoreRequest;
+      '@google-cloud/promisify': fakePfy,
+      '@google-cloud/projectify': fakePjy,
+      './entity': {entity},
+      './query': {Query: FakeQuery},
+      './v1': fakeV1,
+    }).DatastoreRequest;
   });
 
   after(() => {
@@ -115,15 +119,18 @@ describe('Request', () => {
       assert.notStrictEqual(preparedEntityObject, obj);
       assert.notStrictEqual(preparedEntityObject.data.nested, obj.data.nested);
       assert.deepStrictEqual(
-          preparedEntityObject, expectedPreparedEntityObject);
+        preparedEntityObject,
+        expectedPreparedEntityObject
+      );
     });
 
     it('should format an entity', () => {
       const key = {};
       const entityObject = {data: true};
       entityObject[entity.KEY_SYMBOL] = key;
-      const preparedEntityObject =
-          Request.prepareEntityObject_(entityObject) as Any;
+      const preparedEntityObject = Request.prepareEntityObject_(
+        entityObject
+      ) as Any;
       assert.strictEqual(preparedEntityObject.key, key);
       assert.strictEqual(preparedEntityObject.data.data, entityObject.data);
     });
@@ -210,12 +217,15 @@ describe('Request', () => {
         sandbox.stub(entity, 'isKeyComplete');
         sandbox.stub(entity, 'keyToKeyProto');
         request.allocateIds(
-            INCOMPLETE_KEY, OPTIONS, (err: Error, keys: null, resp: {}) => {
-              assert.strictEqual(err, ERROR);
-              assert.strictEqual(keys, null);
-              assert.strictEqual(resp, API_RESPONSE);
-              done();
-            });
+          INCOMPLETE_KEY,
+          OPTIONS,
+          (err: Error, keys: null, resp: {}) => {
+            assert.strictEqual(err, ERROR);
+            assert.strictEqual(keys, null);
+            assert.strictEqual(resp, API_RESPONSE);
+            done();
+          }
+        );
       });
     });
 
@@ -240,14 +250,19 @@ describe('Request', () => {
           return key;
         });
         request.allocateIds(
-            INCOMPLETE_KEY, OPTIONS,
-            (err: Error, keys: entity.Key[],
-             resp: AllocateIdsRequestResponse) => {
-              assert.ifError(err);
-              assert.deepStrictEqual(keys, [key]);
-              assert.strictEqual(resp, API_RESPONSE);
-              done();
-            });
+          INCOMPLETE_KEY,
+          OPTIONS,
+          (
+            err: Error,
+            keys: entity.Key[],
+            resp: AllocateIdsRequestResponse
+          ) => {
+            assert.ifError(err);
+            assert.deepStrictEqual(keys, [key]);
+            assert.strictEqual(resp, API_RESPONSE);
+            done();
+          }
+        );
       });
     });
   });
@@ -278,7 +293,9 @@ describe('Request', () => {
         assert.strictEqual(config.client, 'DatastoreClient');
         assert.strictEqual(config.method, 'lookup');
         assert.deepStrictEqual(
-            config.reqOpts!.keys[0], entity.keyToKeyProto(key));
+          config.reqOpts!.keys[0],
+          entity.keyToKeyProto(key)
+        );
         done();
       };
       const stream = request.createReadStream(key);
@@ -295,7 +312,10 @@ describe('Request', () => {
         done();
       };
 
-      request.createReadStream(key, options).on('error', done).emit('reading');
+      request
+        .createReadStream(key, options)
+        .on('error', done)
+        .emit('reading');
     });
 
     it('should allow setting strong read consistency', done => {
@@ -304,9 +324,10 @@ describe('Request', () => {
         done();
       };
 
-      request.createReadStream(key, {consistency: 'strong'})
-          .on('error', done)
-          .emit('reading');
+      request
+        .createReadStream(key, {consistency: 'strong'})
+        .on('error', done)
+        .emit('reading');
     });
 
     it('should allow setting strong eventual consistency', done => {
@@ -315,9 +336,10 @@ describe('Request', () => {
         done();
       };
 
-      request.createReadStream(key, {consistency: 'eventual'})
-          .on('error', done)
-          .emit('reading');
+      request
+        .createReadStream(key, {consistency: 'eventual'})
+        .on('error', done)
+        .emit('reading');
     });
 
     describe('error', () => {
@@ -333,23 +355,26 @@ describe('Request', () => {
       });
 
       it('should emit error', done => {
-        request.createReadStream(key)
-            .on('data', () => {})
-            .on('error', (err: Error) => {
-              assert.strictEqual(err, error);
-              done();
-            });
+        request
+          .createReadStream(key)
+          .on('data', () => {})
+          .on('error', (err: Error) => {
+            assert.strictEqual(err, error);
+            done();
+          });
       });
 
       it('should end stream', done => {
         const stream = request.createReadStream(key);
 
-        stream.on('data', () => {}).on('error', () => {
-          setImmediate(() => {
-            assert.strictEqual((stream as Any)._destroyed, true);
-            done();
+        stream
+          .on('data', () => {})
+          .on('error', () => {
+            setImmediate(() => {
+              assert.strictEqual((stream as Any)._destroyed, true);
+              done();
+            });
           });
-        });
       });
     });
 
@@ -427,7 +452,10 @@ describe('Request', () => {
           return arr;
         });
 
-        request.createReadStream(key).on('error', done).emit('reading');
+        request
+          .createReadStream(key)
+          .on('error', done)
+          .emit('reading');
       });
 
       it('should continue looking for deferred results', done => {
@@ -441,26 +469,29 @@ describe('Request', () => {
             return;
           }
 
-          const expectedKeys =
-              apiResponseWithDeferred.deferred.map(entity.keyFromKeyProto)
-                  .map(entity.keyToKeyProto);
+          const expectedKeys = apiResponseWithDeferred.deferred
+            .map(entity.keyFromKeyProto)
+            .map(entity.keyToKeyProto);
 
           assert.deepStrictEqual(config.reqOpts!.keys, expectedKeys);
           done();
         };
 
-        request.createReadStream(key).on('error', done).emit('reading');
+        request
+          .createReadStream(key)
+          .on('error', done)
+          .emit('reading');
       });
 
       it('should push results to the stream', done => {
-        request.createReadStream(key)
-            .on('error', done)
-            .on('data',
-                (entity: Entity) => {
-                  assert.deepStrictEqual(entity, expectedResult);
-                })
-            .on('end', done)
-            .emit('reading');
+        request
+          .createReadStream(key)
+          .on('error', done)
+          .on('data', (entity: Entity) => {
+            assert.deepStrictEqual(entity, expectedResult);
+          })
+          .on('end', done)
+          .emit('reading');
       });
 
       it('should not push more results if stream was ended', done => {
@@ -474,17 +505,15 @@ describe('Request', () => {
 
         const stream = request.createReadStream([key, key]);
         stream
-            .on('data',
-                () => {
-                  entitiesEmitted++;
-                  stream.end();
-                })
-            .on('end',
-                () => {
-                  assert.strictEqual(entitiesEmitted, 1);
-                  done();
-                })
-            .emit('reading');
+          .on('data', () => {
+            entitiesEmitted++;
+            stream.end();
+          })
+          .on('end', () => {
+            assert.strictEqual(entitiesEmitted, 1);
+            done();
+          })
+          .emit('reading');
       });
 
       it('should not get more results if stream was ended', done => {
@@ -498,14 +527,14 @@ describe('Request', () => {
         };
 
         const stream = request.createReadStream(key);
-        stream.on('error', done)
-            .on('data', () => stream.end())
-            .on('end',
-                () => {
-                  assert.strictEqual(lookupCount, 1);
-                  done();
-                })
-            .emit('reading');
+        stream
+          .on('error', done)
+          .on('data', () => stream.end())
+          .on('end', () => {
+            assert.strictEqual(lookupCount, 1);
+            done();
+          })
+          .emit('reading');
       });
     });
   });
@@ -527,12 +556,13 @@ describe('Request', () => {
         callback(null!, resp);
       };
       request.delete(
-          key,
-          (err: Error, apiResponse: [google.datastore.v1.CommitResponse]) => {
-            assert.ifError(err);
-            assert.deepStrictEqual(resp, apiResponse);
-            done();
-          });
+        key,
+        (err: Error, apiResponse: [google.datastore.v1.CommitResponse]) => {
+          assert.ifError(err);
+          assert.deepStrictEqual(resp, apiResponse);
+          done();
+        }
+      );
     });
 
     it('should multi delete by keys', done => {
@@ -700,7 +730,10 @@ describe('Request', () => {
         return {} as QueryProto;
       });
 
-      request.runQueryStream(query).on('error', done).emit('reading');
+      request
+        .runQueryStream(query)
+        .on('error', done)
+        .emit('reading');
     });
 
     it('should make correct request when the stream is ready', done => {
@@ -715,13 +748,18 @@ describe('Request', () => {
         assert(is.empty(config.reqOpts!.readOptions));
         assert.strictEqual(config.reqOpts.query, queryProto);
         assert.strictEqual(
-            config.reqOpts.partitionId.namespaceId, query.namespace);
+          config.reqOpts.partitionId.namespaceId,
+          query.namespace
+        );
         assert.strictEqual(config.gaxOpts, undefined);
 
         done();
       };
 
-      request.runQueryStream(query).on('error', done).emit('reading');
+      request
+        .runQueryStream(query)
+        .on('error', done)
+        .emit('reading');
     });
 
     it('should allow customization of GAX options', done => {
@@ -735,7 +773,10 @@ describe('Request', () => {
         done();
       };
 
-      request.runQueryStream({}, options).on('error', done).emit('reading');
+      request
+        .runQueryStream({}, options)
+        .on('error', done)
+        .emit('reading');
     });
 
     it('should allow setting strong read consistency', done => {
@@ -745,9 +786,10 @@ describe('Request', () => {
         done();
       };
 
-      request.runQueryStream({}, {consistency: 'strong'})
-          .on('error', done)
-          .emit('reading');
+      request
+        .runQueryStream({}, {consistency: 'strong'})
+        .on('error', done)
+        .emit('reading');
     });
 
     it('should allow setting strong eventual consistency', done => {
@@ -757,9 +799,10 @@ describe('Request', () => {
         done();
       };
 
-      request.runQueryStream({}, {consistency: 'eventual'})
-          .on('error', done)
-          .emit('reading');
+      request
+        .runQueryStream({}, {consistency: 'eventual'})
+        .on('error', done)
+        .emit('reading');
     });
 
     describe('error', () => {
@@ -773,13 +816,13 @@ describe('Request', () => {
 
       it('should emit error on a stream', done => {
         sandbox.stub(entity, 'queryToQueryProto');
-        request.runQueryStream({})
-            .on('error',
-                (err: Error) => {
-                  assert.strictEqual(err, error);
-                  done();
-                })
-            .emit('reading');
+        request
+          .runQueryStream({})
+          .on('error', (err: Error) => {
+            assert.strictEqual(err, error);
+            done();
+          })
+          .emit('reading');
       });
     });
 
@@ -804,10 +847,11 @@ describe('Request', () => {
           callback(null, apiResponse);
         };
 
-        formatArrayStub =
-            sandbox.stub(entity, 'formatArray').callsFake(array => {
-              return array;
-            });
+        formatArrayStub = sandbox
+          .stub(entity, 'formatArray')
+          .callsFake(array => {
+            return array;
+          });
       });
 
       it('should format results', done => {
@@ -820,13 +864,14 @@ describe('Request', () => {
 
         const entities: Array<{}> = [];
 
-        request.runQueryStream({})
-            .on('error', done)
-            .on('data', (entity: Entity) => entities.push(entity))
-            .on('end', () => {
-              assert.deepStrictEqual(entities, apiResponse.batch.entityResults);
-              done();
-            });
+        request
+          .runQueryStream({})
+          .on('error', done)
+          .on('data', (entity: Entity) => entities.push(entity))
+          .on('end', () => {
+            assert.deepStrictEqual(entities, apiResponse.batch.entityResults);
+            done();
+          });
       });
 
       it('should re-run query if not finished', done => {
@@ -834,11 +879,11 @@ describe('Request', () => {
           limitVal: 1,
           offsetVal: 8,
         };
-        const queryProto = {
+        const queryProto = ({
           limit: {
             value: query.limitVal,
           },
-        } as {} as QueryProto;
+        } as {}) as QueryProto;
 
         let timesRequestCalled = 0;
         let startCalled = false;
@@ -847,7 +892,9 @@ describe('Request', () => {
         formatArrayStub.restore();
         sandbox.stub(entity, 'formatArray').callsFake(array => {
           assert.strictEqual(
-              array, entityResultsPerApiCall[timesRequestCalled]);
+            array,
+            entityResultsPerApiCall[timesRequestCalled]
+          );
           return entityResultsPerApiCall[timesRequestCalled];
         });
 
@@ -856,7 +903,7 @@ describe('Request', () => {
 
           const resp = extend(true, {}, apiResponse);
           resp.batch.entityResults =
-              entityResultsPerApiCall[timesRequestCalled];
+            entityResultsPerApiCall[timesRequestCalled];
 
           if (timesRequestCalled === 1) {
             assert.strictEqual(config.client, 'DatastoreClient');
@@ -874,7 +921,9 @@ describe('Request', () => {
 
         FakeQuery.prototype.start = function(endCursor) {
           assert.strictEqual(
-              endCursor, apiResponse.batch.endCursor.toString('base64'));
+            endCursor,
+            apiResponse.batch.endCursor.toString('base64')
+          );
           startCalled = true;
           return this;
         };
@@ -889,7 +938,9 @@ describe('Request', () => {
         sandbox.stub(FakeQuery.prototype, 'limit').callsFake(limit_ => {
           if (timesRequestCalled === 1) {
             assert.strictEqual(
-                limit_, entityResultsPerApiCall[1].length - query.limitVal);
+              limit_,
+              entityResultsPerApiCall[1].length - query.limitVal
+            );
           } else {
             // Should restore the original limit.
             assert.strictEqual(limit_, query.limitVal);
@@ -907,30 +958,29 @@ describe('Request', () => {
         const entities: Array<{}> = [];
         let info: Any;
 
-        request.runQueryStream(query)
-            .on('error', done)
-            .on('info',
-                (_info: object) => {
-                  info = _info;
-                })
-            .on('data',
-                (entity: Entity) => {
-                  entities.push(entity);
-                })
-            .on('end', () => {
-              const allResults = ([] as Array<{}>)
-                                     .slice.call(entityResultsPerApiCall[1])
-                                     .concat(entityResultsPerApiCall[2]);
+        request
+          .runQueryStream(query)
+          .on('error', done)
+          .on('info', (_info: object) => {
+            info = _info;
+          })
+          .on('data', (entity: Entity) => {
+            entities.push(entity);
+          })
+          .on('end', () => {
+            const allResults = ([] as Array<{}>).slice
+              .call(entityResultsPerApiCall[1])
+              .concat(entityResultsPerApiCall[2]);
 
-              assert.deepStrictEqual(entities, allResults);
+            assert.deepStrictEqual(entities, allResults);
 
-              assert.deepStrictEqual(info, {
-                endCursor: apiResponse.batch.endCursor.toString('base64'),
-                moreResults: apiResponse.batch.moreResults,
-              });
-
-              done();
+            assert.deepStrictEqual(info, {
+              endCursor: apiResponse.batch.endCursor.toString('base64'),
+              moreResults: apiResponse.batch.moreResults,
             });
+
+            done();
+          });
       });
 
       it('should handle large limitless queries', done => {
@@ -956,14 +1006,15 @@ describe('Request', () => {
         sandbox.stub(entity, 'queryToQueryProto').returns({} as QueryProto);
         const limitStub = sandbox.stub(FakeQuery.prototype, 'limit');
 
-        request.runQueryStream(query)
-            .on('error', done)
-            .on('data', () => {})
-            .on('end', () => {
-              assert.strictEqual(timesRequestCalled, 2);
-              assert.strictEqual(limitStub.called, false);
-              done();
-            });
+        request
+          .runQueryStream(query)
+          .on('error', done)
+          .on('data', () => {})
+          .on('end', () => {
+            assert.strictEqual(timesRequestCalled, 2);
+            assert.strictEqual(limitStub.called, false);
+            done();
+          });
       });
 
       it('should not push more results if stream was ended', done => {
@@ -977,7 +1028,7 @@ describe('Request', () => {
 
           const resp = extend(true, {}, apiResponse);
           resp.batch.entityResults =
-              entityResultsPerApiCall[timesRequestCalled];
+            entityResultsPerApiCall[timesRequestCalled];
 
           if (timesRequestCalled === 1) {
             resp.batch.moreResults = 'NOT_FINISHED';
@@ -988,16 +1039,16 @@ describe('Request', () => {
           }
         };
 
-        const stream = request.runQueryStream({})
-                           .on('data',
-                               () => {
-                                 entitiesEmitted++;
-                                 stream.end();
-                               })
-                           .on('end', () => {
-                             assert.strictEqual(entitiesEmitted, 1);
-                             done();
-                           });
+        const stream = request
+          .runQueryStream({})
+          .on('data', () => {
+            entitiesEmitted++;
+            stream.end();
+          })
+          .on('end', () => {
+            assert.strictEqual(entitiesEmitted, 1);
+            done();
+          });
       });
 
       it('should not get more results if stream was ended', done => {
@@ -1009,12 +1060,13 @@ describe('Request', () => {
         };
 
         const stream = request.runQueryStream({});
-        stream.on('error', done)
-            .on('data', () => stream.end())
-            .on('end', () => {
-              assert.strictEqual(timesRequestCalled, 1);
-              done();
-            });
+        stream
+          .on('error', done)
+          .on('data', () => stream.end())
+          .on('end', () => {
+            assert.strictEqual(timesRequestCalled, 1);
+            done();
+          });
       });
     });
   });
@@ -1033,7 +1085,7 @@ describe('Request', () => {
           setImmediate(() => {
             stream.emit('info', fakeInfo);
 
-            fakeEntities.forEach((entity) => {
+            fakeEntities.forEach(entity => {
               stream.push(entity);
             });
 
@@ -1048,16 +1100,19 @@ describe('Request', () => {
         const options = {};
 
         request.runQuery(
-            query, options, (err: Error|null, entities: Entity[], info: {}) => {
-              assert.ifError(err);
-              assert.deepStrictEqual(entities, fakeEntities);
-              assert.strictEqual(info, fakeInfo);
+          query,
+          options,
+          (err: Error | null, entities: Entity[], info: {}) => {
+            assert.ifError(err);
+            assert.deepStrictEqual(entities, fakeEntities);
+            assert.strictEqual(info, fakeInfo);
 
-              const spy = request.runQueryStream.getCall(0);
-              assert.strictEqual(spy.args[0], query);
-              assert.strictEqual(spy.args[1], options);
-              done();
-            });
+            const spy = request.runQueryStream.getCall(0);
+            assert.strictEqual(spy.args[0], query);
+            assert.strictEqual(spy.args[1], options);
+            done();
+          }
+        );
       });
 
       it('should allow options to be omitted', done => {
@@ -1170,11 +1225,13 @@ describe('Request', () => {
       };
 
       request.save(
-          {
-            key,
-            data: {},
-          },
-          gaxOptions, assert.ifError);
+        {
+          key,
+          data: {},
+        },
+        gaxOptions,
+        assert.ifError
+      );
     });
 
     it('should prepare entity objects', done => {
@@ -1219,25 +1276,27 @@ describe('Request', () => {
       };
 
       request.save(
-          [
-            {key, method: 'insert', data: {k: 'v'}},
-            {key, method: 'update', data: {k2: 'v2'}},
-            {key, method: 'upsert', data: {k3: 'v3'}},
-          ],
-          done);
+        [
+          {key, method: 'insert', data: {k: 'v'}},
+          {key, method: 'update', data: {k2: 'v2'}},
+          {key, method: 'upsert', data: {k3: 'v3'}},
+        ],
+        done
+      );
     });
 
     it('should throw if a given method is not recognized', () => {
       assert.throws(() => {
         request.save(
-            {
-              key,
-              method: 'auto_insert_id',
-              data: {
-                k: 'v',
-              },
+          {
+            key,
+            method: 'auto_insert_id',
+            data: {
+              k: 'v',
             },
-            assert.ifError);
+          },
+          assert.ifError
+        );
       }, /Method auto_insert_id not recognized/);
     });
 
@@ -1273,11 +1332,14 @@ describe('Request', () => {
       request.request_ = (config: RequestConfig, callback: Function) => {
         callback(null, mockCommitResponse);
       };
-      request.save({key, data: {}}, (err: Error|null, apiResponse: Entity) => {
-        assert.ifError(err);
-        assert.strictEqual(mockCommitResponse, apiResponse);
-        done();
-      });
+      request.save(
+        {key, data: {}},
+        (err: Error | null, apiResponse: Entity) => {
+          assert.ifError(err);
+          assert.strictEqual(mockCommitResponse, apiResponse);
+          done();
+        }
+      );
     });
 
     it('should allow setting the indexed value of a property', done => {
@@ -1289,17 +1351,18 @@ describe('Request', () => {
       };
 
       request.save(
-          {
-            key,
-            data: [
-              {
-                name: 'name',
-                value: 'value',
-                excludeFromIndexes: true,
-              },
-            ],
-          },
-          assert.ifError);
+        {
+          key,
+          data: [
+            {
+              name: 'name',
+              value: 'value',
+              excludeFromIndexes: true,
+            },
+          ],
+        },
+        assert.ifError
+      );
     });
 
     it('should allow setting the indexed value on arrays', done => {
@@ -1314,17 +1377,18 @@ describe('Request', () => {
       };
 
       request.save(
-          {
-            key,
-            data: [
-              {
-                name: 'name',
-                value: ['one', 'two', 'three'],
-                excludeFromIndexes: true,
-              },
-            ],
-          },
-          assert.ifError);
+        {
+          key,
+          data: [
+            {
+              name: 'name',
+              value: ['one', 'two', 'three'],
+              excludeFromIndexes: true,
+            },
+          ],
+        },
+        assert.ifError
+      );
     });
 
     it('should assign ID on keys without them', done => {
@@ -1353,29 +1417,30 @@ describe('Request', () => {
 
       sandbox.stub(entity, 'keyFromKeyProto').callsFake(keyProto => {
         keyProtos.push(keyProto);
-        return {
+        return ({
           id: ids[keyProtos.length - 1],
-        } as {} as entity.Key;
+        } as {}) as entity.Key;
       });
 
       request.save(
-          [
-            {key: incompleteKey, data: {}},
-            {key: incompleteKey2, data: {}},
-            {key: completeKey, data: {}},
-          ],
-          (err: Error) => {
-            assert.ifError(err);
+        [
+          {key: incompleteKey, data: {}},
+          {key: incompleteKey2, data: {}},
+          {key: completeKey, data: {}},
+        ],
+        (err: Error) => {
+          assert.ifError(err);
 
-            assert.strictEqual(incompleteKey.id, ids[0]);
-            assert.strictEqual(incompleteKey2.id, ids[1]);
+          assert.strictEqual(incompleteKey.id, ids[0]);
+          assert.strictEqual(incompleteKey2.id, ids[1]);
 
-            assert.strictEqual(keyProtos.length, 2);
-            assert.strictEqual(keyProtos[0], response.mutationResults[0].key);
-            assert.strictEqual(keyProtos[1], response.mutationResults[1].key);
+          assert.strictEqual(keyProtos.length, 2);
+          assert.strictEqual(keyProtos[0], response.mutationResults[0].key);
+          assert.strictEqual(keyProtos[1], response.mutationResults[1].key);
 
-            done();
-          });
+          done();
+        }
+      );
     });
 
     describe('transactions', () => {
@@ -1485,7 +1550,7 @@ describe('Request', () => {
 
   describe('request_', () => {
     const CONFIG = {
-      client: 'FakeClient',  // name set at top of file
+      client: 'FakeClient', // name set at top of file
       method: 'method',
       reqOpts: {
         a: 'b',
@@ -1583,7 +1648,8 @@ describe('Request', () => {
     it('should send gaxOpts', done => {
       request.datastore.clients_ = new Map();
       request.datastore.clients_.set(CONFIG.client, {
-        [CONFIG.method](_: object, gaxO: CallOptions) {
+        // tslint:disable-next-line no-any
+        [CONFIG.method](_: object, gaxO: any) {
           delete gaxO.headers;
           assert.deepStrictEqual(gaxO, CONFIG.gaxOpts);
           done();
@@ -1596,7 +1662,8 @@ describe('Request', () => {
     it('should send google-cloud-resource-prefix', done => {
       request.datastore.clients_ = new Map();
       request.datastore.clients_.set(CONFIG.client, {
-        [CONFIG.method](_: object, gaxO: CallOptions) {
+        // tslint:disable-next-line no-any
+        [CONFIG.method](_: object, gaxO: any) {
           assert.deepStrictEqual(gaxO.headers, {
             'google-cloud-resource-prefix': 'projects/' + PROJECT_ID,
           });
@@ -1670,7 +1737,9 @@ describe('Request', () => {
         request.datastore.clients_.set(CONFIG.client, {
           lookup(reqOpts: RequestOptions) {
             assert.strictEqual(
-                reqOpts.readOptions!.transaction, TRANSACTION_ID);
+              reqOpts.readOptions!.transaction,
+              TRANSACTION_ID
+            );
             done();
           },
         });
@@ -1687,7 +1756,9 @@ describe('Request', () => {
         request.datastore.clients_.set(CONFIG.client, {
           runQuery(reqOpts: RequestOptions) {
             assert.strictEqual(
-                reqOpts.readOptions!.transaction, TRANSACTION_ID);
+              reqOpts.readOptions!.transaction,
+              TRANSACTION_ID
+            );
             done();
           },
         });
